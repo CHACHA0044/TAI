@@ -1,6 +1,9 @@
 import { AnalysisResult, JobResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prana-v12-truthguard-api.hf.space';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+if (!API_BASE_URL) {
+  console.error("Warning: NEXT_PUBLIC_API_URL is not defined. Backend connections will fail.");
+}
 
 export async function analyzeText(text: string): Promise<AnalysisResult> {
   const response = await fetch(`${API_BASE_URL}/analyze-text`, {
