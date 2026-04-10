@@ -34,9 +34,18 @@ logger = logging.getLogger("truthguard")
 # ------------------------------------------------------------------
 app = FastAPI(title="TruthGuard AI — Text Verification API", version="1.0.0")
 
+# ------------------------------------------------------------------
+# CORS setup
+# ------------------------------------------------------------------
+frontend_url = os.getenv("FRONTEND", "*")
+origins = [frontend_url]
+if frontend_url != "*":
+    # Add localhost for development convenience
+    origins.extend(["http://localhost:3000", "http://localhost:8000"])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
