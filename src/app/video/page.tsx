@@ -182,18 +182,25 @@ export default function VideoDetectionPage() {
 
                       <div className="space-y-3">
                         <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tighter text-white/40">
-                          <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Forensic Timeline</span>
-                          <span>Anomaly Distribution</span>
+                          <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Per-Frame AI Score</span>
+                          <span>{result.frame_scores ? `${result.frame_scores.length} frames` : `${result.signals.length} signals`}</span>
                         </div>
                         <div className="h-10 w-full flex gap-1 items-end">
-                          {(result.features.stylometry.lexical_diversity > 0.4 ? [0.2, 0.5, 0.4, 0.8, 0.7, 0.9, 0.6, 0.5, 0.4, 0.3] : [0.1, 0.2, 0.1, 0.2, 0.1, 0.3, 0.1, 0.2, 0.1, 0.2]).map((val, i) => (
-                            <div 
-                              key={i} 
-                              style={{ height: `${val * 100}%` }}
-                              className={`flex-1 rounded-sm ${val > 0.7 ? 'bg-rose-500/60' : val > 0.4 ? 'bg-amber-500/40' : 'bg-emerald-500/20'}`}
+                          {(result.frame_scores && result.frame_scores.length > 0
+                            ? result.frame_scores
+                            : result.signals.map(s => s.confidence)
+                          ).map((val, i) => (
+                            <div
+                              key={i}
+                              style={{ height: `${Math.max(val * 100, 8)}%` }}
+                              title={`${result.frame_scores ? `Frame ${i + 1}` : result.signals[i]?.source}: ${Math.round(val * 100)}% AI`}
+                              className={`flex-1 rounded-sm transition-all ${val > 0.7 ? 'bg-rose-500/70' : val > 0.4 ? 'bg-amber-500/50' : 'bg-emerald-500/30'}`}
                             />
                           ))}
                         </div>
+                        <p className="text-[9px] text-white/25 text-right">
+                          {result.frame_scores ? "Higher bars = stronger AI signal in that frame" : "Signal confidence scores"}
+                        </p>
                       </div>
                     </div>
                   )}

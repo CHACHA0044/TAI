@@ -574,6 +574,8 @@ class VideoEngine:
         }
         if audio_score is not None:
             result["audio_score"] = round(audio_score, 2)
+        if frame_scores:
+            result["frame_scores"] = [round(float(s), 3) for s in frame_scores]
         return result
 
     def _generate_explanation(self, category, source, ai, ela, variance, face_hit) -> str:

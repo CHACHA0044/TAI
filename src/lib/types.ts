@@ -35,6 +35,7 @@ export interface AnalysisResult {
   audio_score?: number;
   news_consistency_score?: number;
   ocr_text?: string;
+  frame_scores?: number[];
 }
 
 export type DetectionMode = "text" | "image" | "video";

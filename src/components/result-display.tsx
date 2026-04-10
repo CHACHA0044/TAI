@@ -82,68 +82,111 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
               <div className="p-2 rounded-lg bg-white/5">
                 <Globe className="w-4 h-4 text-emerald-400" />
               </div>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${result.source && result.source !== "Unknown" ? "bg-rose-500/20 text-rose-400" : "bg-white/5 text-white/30"}`}>
+                {result.source && result.source !== "Unknown" ? "IDENTIFIED" : "UNKNOWN"}
+              </span>
             </div>
-            <p className="text-xs font-bold text-white/80 mb-1">Source Model</p>
-            <p className="text-lg font-black text-white/90 truncate">{result.source || "Unknown"}</p>
-            <p className="text-[10px] text-white/30 leading-tight mt-1">Identified via metadata & digital trace.</p>
+            <p className="text-xs font-bold text-white/80 mb-1">Origin / Source</p>
+            <p className="text-lg font-black text-white/90 truncate">{result.source && result.source !== "Unknown" ? result.source : "No match found"}</p>
+            <p className="text-[10px] text-white/30 leading-tight mt-1">
+              {result.source && result.source !== "Unknown"
+                ? "Source identified via filename markers or embedded metadata."
+                : "No known AI generator signature found in file metadata."}
+            </p>
           </div>
         ) : (
           <ScoreCard 
             label="Truth Score" 
             score={result.truth_score} 
             icon={<Target className="w-4 h-4 text-emerald-400" />}
-            description="Factual accuracy probability."
+            description="Factual accuracy vs. verified sources."
           />
         )}
         
         <ScoreCard 
-          label="AI Likelihood" 
+          label={result.category ? "AI Artifact Score" : "AI Likelihood"}
           score={result.ai_generated_score} 
           icon={<BrainCircuit className="w-4 h-4 text-rose-400" />}
-          description={result.category ? "Neural artifact probability." : "Likelihood of machine origin."}
+          description={result.category ? "Neural network probability that content is synthetic." : "Likelihood content was machine-generated."}
+          invertColor
         />
 
         {!result.category && (
           <ScoreCard 
-            label="Bias Analysis" 
+            label="Bias Level" 
             score={result.bias_score} 
             icon={<Scale className="w-4 h-4 text-amber-400" />}
-            description="Propaganda & slant detection."
+            description="Detected slant, propaganda, or loaded framing."
+            invertColor
           />
         )}
 
         {result.category && (
           <ScoreCard 
-            label="Forensic ELA" 
+            label="Pixel Integrity (ELA)" 
             score={result.credibility_score} 
             icon={<Cpu className="w-4 h-4 text-amber-400" />}
-            description="Consistency of internal noise levels."
+            description="How consistent the compression noise is. Low = edited or synthetic."
           />
         )}
       </div>
+
+      {/* Forensic Verdict Summary — only for image/video (category present) */}
+      {result.category && result.signals && result.signals.length > 0 && (
+        <div className="glass rounded-3xl border border-white/10 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Info className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Forensic Verdict Summary</h3>
+            <span className="ml-auto text-[10px] text-white/30">{result.signals.length} layers checked</span>
+          </div>
+          <div className="grid gap-2">
+            {result.signals.map((signal, i) => {
+              const pct = Math.round(signal.confidence * 100);
+              return (
+                <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${signal.verified ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}`}>
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${signal.verified ? "bg-emerald-500" : "bg-rose-500"}`} />
+                  <span className="text-xs font-semibold text-white/80 flex-1">{signal.source}</span>
+                  <span className="text-[10px] font-mono text-white/40">{pct}%</span>
+                  <span className={`text-[10px] font-black uppercase tracking-wide ${signal.verified ? "text-emerald-400" : "text-rose-400"}`}>
+                    {signal.verified ? "PASS" : "FAIL"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[10px] text-white/25 mt-3">
+            Each layer is an independent forensic check. Multiple FAILs = high confidence of manipulation or synthesis.
+          </p>
+        </div>
+      )}
 
       {/* Explanation Section */}
       <div className="glass rounded-3xl border border-white/10 p-6">
         <div className="flex items-center gap-2 mb-4">
           <Info className="w-4 h-4 text-emerald-400" />
-          <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">AI Reasoning</h3>
+          <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
+            {result.category ? "Forensic Analysis Report" : "AI Reasoning"}
+          </h3>
         </div>
         <p className="text-white/70 text-sm leading-relaxed mb-6 italic">
           "{result.explanation}"
         </p>
 
-        {/* Verification Signals */}
-        {result.signals && result.signals.length > 0 && (
+        {/* Verification Signals — only shown for text results (no category) */}
+        {!result.category && result.signals && result.signals.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-white/5">
-            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Forensic Layers</h4>
+            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Verification Signals</h4>
             <div className="grid gap-3">
               {result.signals.map((signal, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                   <span className="text-xs font-medium text-white/70">{signal.source}</span>
-                  <div className="flex items-center gap-3">
-                    <ScoreBar label="" score={signal.confidence} showPercentage={false} color={signal.verified ? "bg-emerald-500" : "bg-rose-500"} />
-                    <span className={`text-[10px] font-bold ${signal.verified ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {signal.verified ? 'CLEAN' : 'SUSPICIOUS'}
+                  <div className="flex items-center gap-2">
+                    <div className="w-16">
+                      <ScoreBar label="" score={signal.confidence} showPercentage={false} color={signal.verified ? "bg-emerald-500" : "bg-rose-500"} />
+                    </div>
+                    <span className="text-[10px] font-mono text-white/40 w-8 text-right">{Math.round(signal.confidence * 100)}%</span>
+                    <span className={`text-[10px] font-bold w-16 text-right ${signal.verified ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {signal.verified ? 'VERIFIED' : 'FLAGGED'}
                     </span>
                   </div>
                 </div>
@@ -248,19 +291,32 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
   );
 }
 
-function ScoreCard({ label, score, icon, description }: { label: string; score: number; icon: React.ReactNode; description: string }) {
+function ScoreCard({ label, score, icon, description, invertColor }: { label: string; score: number; icon: React.ReactNode; description: string; invertColor?: boolean }) {
+  // For AI/Bias scores, high = bad (red). For Truth/ELA/credibility, high = good (green).
+  const getColor = () => {
+    const v = invertColor ? 1 - score : score;
+    if (v > 0.6) return "bg-emerald-500";
+    if (v > 0.35) return "bg-amber-500";
+    return "bg-rose-500";
+  };
+  const getTextColor = () => {
+    const v = invertColor ? 1 - score : score;
+    if (v > 0.6) return "text-emerald-400";
+    if (v > 0.35) return "text-amber-400";
+    return "text-rose-400";
+  };
   return (
     <div className="glass rounded-2xl border border-white/10 p-5 group hover:border-white/20 transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className="p-2 rounded-lg bg-white/5">
           {icon}
         </div>
-        <span className="text-2xl font-black font-mono text-white">{Math.round(score * 100)}%</span>
+        <span className={`text-2xl font-black font-mono ${getTextColor()}`}>{Math.round(score * 100)}%</span>
       </div>
       <p className="text-xs font-bold text-white/80 mb-1">{label}</p>
       <p className="text-[10px] text-white/30 leading-tight">{description}</p>
       <div className="mt-4">
-        <ScoreBar label="" score={score} showPercentage={false} />
+        <ScoreBar label="" score={score} showPercentage={false} color={getColor()} />
       </div>
     </div>
   );
