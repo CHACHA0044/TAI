@@ -39,3 +39,20 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Data and Models
+backend/data/
+backend/models/
+backend/uploads/
+backend/node_modules/
+backend/__pycache__/
+__pycache__/
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.pt
+*.bin
+*.pth
+*.log
+checkpoint.pt
