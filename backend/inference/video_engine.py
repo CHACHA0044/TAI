@@ -1,6 +1,8 @@
 import cv2
 import io
 import os
+import subprocess
+import tempfile
 import time
 import logging
 import hashlib
@@ -70,10 +72,11 @@ class VideoEngine:
         buf_array = np.frombuffer(video_bytes, dtype=np.uint8)
         cap = cv2.VideoCapture()
 
-        # OpenCV needs a file-like path; use a temp bytes write approach
-        # Write to a named temp path on D: (no C: usage)
-        tmp_path = f"d:/rep/tai/.cache/tmp_video_{hashlib.md5(video_bytes[:1024]).hexdigest()[:8]}.mp4"
-        os.makedirs(os.path.dirname(tmp_path), exist_ok=True)
+        # OpenCV needs a file path; write to a system temp directory
+        tmp_path = os.path.join(
+            tempfile.gettempdir(),
+            f"tmp_video_{hashlib.md5(video_bytes[:1024]).hexdigest()[:8]}.mp4",
+        )
         with open(tmp_path, "wb") as f:
             f.write(video_bytes)
 
@@ -104,6 +107,7 @@ class VideoEngine:
             # Early exit if clearly real (all pre-check frames show very low AI score)
             if pre_scores and all(s < 0.25 for s in pre_scores) and source == "Unknown":
                 logger.info("Early exit triggered — low AI signal on pre-check frames")
+                audio_score = self._analyze_audio(tmp_path)
                 elapsed = int((time.time() - start) * 1000)
                 return self._build_result(
                     category="REAL", source="Unknown",
@@ -111,7 +115,8 @@ class VideoEngine:
                     temporal_variance=0.0, face_hit=False,
                     frames_analysed=len(frames[:2]), video_meta=video_meta,
                     confidence=0.8, elapsed_ms=elapsed,
-                    signals=["Pre-check passed — no synthetic artifacts detected"]
+                    signals=["Pre-check passed — no synthetic artifacts detected"],
+                    audio_score=audio_score,
                 )
 
             # 5. Full frame-level inference
@@ -127,11 +132,15 @@ class VideoEngine:
             temporal_variance = float(np.var(ai_scores)) if len(ai_scores) > 1 else 0.0
             logger.info(f"Temporal variance: {temporal_variance:.4f}")
 
-            # 7. Semantic Intelligence (The "What is happening" layer)
+            # 7. Audio forensics
+            audio_score = self._analyze_audio(tmp_path)
+            logger.info(f"Audio authenticity score: {audio_score:.2f}")
+
+            # 8. Semantic Intelligence (The "What is happening" layer)
             scene_summary, tags = self._describe_scenes(frames)
             logger.info(f"Scene intelligence: {scene_summary}")
 
-            # 8. Aggregation
+            # 9. Aggregation
             avg_ai    = float(np.mean(ai_scores))
             avg_ela   = float(np.mean(ela_scores))
             face_hit  = any(face_hits)
@@ -142,7 +151,7 @@ class VideoEngine:
             logger.info(f"Analysis done in {elapsed}ms — verdict={category}, avg_ai={avg_ai:.2f}")
 
             signal_notes = self._build_signal_notes(
-                avg_ai, avg_ela, temporal_variance, face_hit, source
+                avg_ai, avg_ela, temporal_variance, face_hit, source, audio_score
             )
 
             return self._build_result(
@@ -154,7 +163,8 @@ class VideoEngine:
                 signals=signal_notes,
                 frame_scores=ai_scores,
                 summary=scene_summary,
-                tags=tags
+                tags=tags,
+                audio_score=audio_score,
             )
 
         finally:
@@ -385,10 +395,94 @@ class VideoEngine:
         return round(max(0.4, min(0.98, base - penalty + 0.4)), 2)
 
     # ------------------------------------------------------------------
+    # Audio forensics
+    # ------------------------------------------------------------------
+
+    def _analyze_audio(self, video_path: str) -> float:
+        """
+        Extract and analyse the audio track of a video for synthetic/TTS indicators.
+
+        Returns an *audio authenticity score* in [0.0, 1.0]:
+          - 1.0 = likely authentic human audio
+          - 0.0 = likely synthetic / TTS / silence
+
+        Strategy:
+          1. Extract mono 16 kHz WAV with ffmpeg.
+          2. Compute spectral & temporal features via librosa.
+          3. Map feature combination to a heuristic score.
+        """
+        tmp_audio = os.path.join(tempfile.gettempdir(), "tmp_audio_analysis.wav")
+        try:
+            # Step 1 — extract audio
+            proc = subprocess.run(
+                [
+                    "ffmpeg", "-y", "-i", video_path,
+                    "-ar", "16000", "-ac", "1", "-vn",
+                    tmp_audio,
+                ],
+                capture_output=True,
+                timeout=30,
+            )
+            if proc.returncode != 0 or not os.path.exists(tmp_audio):
+                logger.warning("ffmpeg audio extraction failed — skipping audio forensics")
+                return 1.0
+
+            try:
+                import librosa  # lazy import; not always installed
+
+                y, sr = librosa.load(tmp_audio, sr=16000, mono=True)
+            except ImportError:
+                logger.warning("librosa not installed — skipping audio forensics")
+                return 1.0
+
+            if len(y) < sr * 0.5:  # less than 0.5 s of audio
+                logger.info("Audio track too short — skipping audio forensics")
+                return 1.0
+
+            # Step 2 — feature extraction
+            # Spectral flatness: synthetic/TTS is often too clean (very low flatness)
+            flatness = float(np.mean(librosa.feature.spectral_flatness(y=y)))
+
+            # ZCR variance: natural speech has irregular zero-crossing patterns
+            zcr = librosa.feature.zero_crossing_rate(y)[0]
+            zcr_var = float(np.var(zcr))
+
+            # MFCC variance: real speech has richer spectral variation
+            mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+            mfcc_var = float(np.mean(np.var(mfcc, axis=1)))
+
+            # Step 3 — heuristic scoring (all components in [0, 1])
+            flatness_score = min(flatness * 20.0, 1.0)          # low flatness → suspicious
+            zcr_score      = min(zcr_var * 2_000.0, 1.0)        # low variance → suspicious
+            mfcc_score     = min(mfcc_var / 80.0, 1.0)          # low MFCC var → suspicious
+
+            audio_score = (zcr_score * 0.35 + mfcc_score * 0.45 + flatness_score * 0.20)
+            audio_score = round(max(0.0, min(1.0, audio_score)), 2)
+
+            logger.info(
+                f"Audio forensics: flatness={flatness:.5f}, zcr_var={zcr_var:.6f}, "
+                f"mfcc_var={mfcc_var:.2f} → score={audio_score}"
+            )
+            return audio_score
+
+        except FileNotFoundError:
+            logger.warning("ffmpeg binary not found — audio forensics skipped")
+            return 1.0
+        except Exception as exc:
+            logger.warning(f"Audio forensics error: {exc}")
+            return 1.0
+        finally:
+            if os.path.exists(tmp_audio):
+                try:
+                    os.remove(tmp_audio)
+                except OSError:
+                    pass
+
+    # ------------------------------------------------------------------
     # Signal notes
     # ------------------------------------------------------------------
 
-    def _build_signal_notes(self, avg_ai, avg_ela, temporal_var, face_hit, source) -> List[str]:
+    def _build_signal_notes(self, avg_ai, avg_ela, temporal_var, face_hit, source, audio_score=1.0) -> List[str]:
         notes = []
         if source != "Unknown":
             notes.append(f"Source marker identified: {source}")
@@ -400,6 +494,8 @@ class VideoEngine:
             notes.append(f"ELA forensics flagged compression anomalies ({avg_ela:.2f})")
         if face_hit:
             notes.append("Human face regions detected and analysed separately")
+        if audio_score < 0.4:
+            notes.append(f"Synthetic audio characteristics detected (score={audio_score:.2f})")
         if not notes:
             notes.append("No significant synthetic artifacts detected")
         return notes
@@ -411,7 +507,7 @@ class VideoEngine:
     def _build_result(
         self, category, source, ai_score, ela_score, temporal_variance,
         face_hit, frames_analysed, video_meta, confidence, elapsed_ms,
-        signals, frame_scores=None, summary="", tags=None
+        signals, frame_scores=None, summary="", tags=None, audio_score=None
     ) -> dict:
         explanation = self._generate_explanation(
             category, source, ai_score, ela_score, temporal_variance, face_hit
@@ -423,8 +519,14 @@ class VideoEngine:
             {"source": "Temporal Consistency",      "verified": temporal_variance < 0.01, "confidence": round(max(0, 1 - temporal_variance * 20), 2)},
             {"source": "Face-Region Deepfake Scan", "verified": not (face_hit and category == "DEEPFAKE"), "confidence": round(confidence, 2)},
         ]
+        if audio_score is not None:
+            signal_list.append({
+                "source": "Audio Forensics",
+                "verified": audio_score >= 0.5,
+                "confidence": round(audio_score, 2),
+            })
 
-        return {
+        result = {
             "category":          category,
             "source":            source,
             "truth_score":       0.0,
@@ -459,6 +561,9 @@ class VideoEngine:
                 }
             },
         }
+        if audio_score is not None:
+            result["audio_score"] = round(audio_score, 2)
+        return result
 
     def _generate_explanation(self, category, source, ai, ela, variance, face_hit) -> str:
         if category == "AI_GENERATED":

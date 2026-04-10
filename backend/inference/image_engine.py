@@ -16,6 +16,13 @@ except ImportError:
     HAS_TRANSFORMERS = False
     logger.warning("transformers not installed — image detection will run in mock mode")
 
+try:
+    import pytesseract
+    HAS_TESSERACT = True
+except ImportError:
+    HAS_TESSERACT = False
+    logger.warning("pytesseract not installed — OCR will be skipped")
+
 class ImageEngine:
     def __init__(self, model_name="prithivMLmods/Deep-Fake-Detector-v2-Model"):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -158,13 +165,18 @@ class ImageEngine:
             else:
                 category = "REAL"
 
-            # 5. Build Explanation
+            # 5. OCR — extract text from image (e.g. memes, documents)
+            ocr_text = self._extract_ocr_text(img_rgb)
+            if ocr_text:
+                logger.info(f"OCR extracted {len(ocr_text)} chars of text from image")
+
+            # 6. Build Explanation
             explanation = self._generate_detailed_explanation(category, source, neural_score, ela_suspicion, metadata)
             
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.info(f"Analysis finished in {elapsed_ms}ms — verdict: {category}")
-            
-            return {
+
+            result = {
                 "category": category,
                 "source": source,
                 "truth_score": 0.0,
@@ -174,11 +186,11 @@ class ImageEngine:
                 "confidence_score": round(confidence if category != "AI_GENERATED" or source == "Unknown" else 0.98, 2),
                 "explanation": explanation,
                 "features": {
-                    "perplexity": ela_suspicion, # Re-purposing field for debug display
-                    "stylometry": { 
-                        "sentence_length_variance": neural_score, 
-                        "repetition_score": len(metadata), 
-                        "lexical_diversity": confidence 
+                    "perplexity": ela_suspicion,
+                    "stylometry": {
+                        "sentence_length_variance": neural_score,
+                        "repetition_score": len(metadata),
+                        "lexical_diversity": confidence
                     },
                 },
                 "signals": [
@@ -192,10 +204,27 @@ class ImageEngine:
                     "raw_metadata": metadata
                 },
             }
+            if ocr_text:
+                result["ocr_text"] = ocr_text
+            return result
             
         except Exception as e:
             logger.exception("CRITICAL ERROR in image engine pipeline")
             raise e
+
+    def _extract_ocr_text(self, image: Image.Image) -> str:
+        """
+        Extract text from an image using pytesseract (Tesseract OCR).
+        Returns the extracted text, or an empty string if unavailable/failed.
+        """
+        if not HAS_TESSERACT:
+            return ""
+        try:
+            text = pytesseract.image_to_string(image, timeout=10).strip()
+            return text
+        except Exception as exc:
+            logger.warning(f"OCR extraction failed: {exc}")
+            return ""
 
     def _generate_detailed_explanation(self, category, source, neural, ela, metadata):
         if category == "AI_GENERATED":

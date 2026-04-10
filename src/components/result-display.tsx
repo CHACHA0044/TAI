@@ -11,7 +11,10 @@ import {
   BrainCircuit,
   Scale,
   Globe,
-  Cpu
+  Cpu,
+  Mic,
+  Newspaper,
+  FileText,
 } from "lucide-react";
 import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
@@ -168,6 +171,76 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           </div>
         )}
       </div>
+
+      {/* Audio Forensics Score */}
+      {result.audio_score !== undefined && result.audio_score !== null && (
+        <div className="glass rounded-3xl border border-white/10 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Mic className="w-4 h-4 text-violet-400" />
+            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Audio Forensics</h3>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex-1">
+              <ScoreBar label="Audio Authenticity" score={result.audio_score} showPercentage />
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-black font-mono text-white">{Math.round(result.audio_score * 100)}%</p>
+              <p className={`text-xs font-bold mt-1 ${result.audio_score >= 0.5 ? "text-emerald-400" : "text-rose-400"}`}>
+                {result.audio_score >= 0.7 ? "AUTHENTIC" : result.audio_score >= 0.5 ? "UNCERTAIN" : "SYNTHETIC"}
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-white/30 mt-3">
+            Spectral and temporal audio features analysed for synthetic speech indicators (TTS, voice cloning).
+          </p>
+        </div>
+      )}
+
+      {/* News Consistency Score */}
+      {result.news_consistency_score !== undefined && result.news_consistency_score !== null && (
+        <div className="glass rounded-3xl border border-white/10 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Newspaper className="w-4 h-4 text-sky-400" />
+            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">News Consistency</h3>
+          </div>
+          <div className="flex items-center gap-6">
+            <div className="flex-1">
+              <ScoreBar
+                label="Consistency with Known Reporting"
+                score={result.news_consistency_score}
+                showPercentage
+                color={result.news_consistency_score >= 0.5 ? "bg-sky-500" : "bg-rose-500"}
+              />
+            </div>
+            <div className="text-right">
+              <p className="text-2xl font-black font-mono text-white">{Math.round(result.news_consistency_score * 100)}%</p>
+              <p className={`text-xs font-bold mt-1 ${result.news_consistency_score >= 0.6 ? "text-emerald-400" : result.news_consistency_score >= 0.4 ? "text-amber-400" : "text-rose-400"}`}>
+                {result.news_consistency_score >= 0.6 ? "CONSISTENT" : result.news_consistency_score >= 0.4 ? "UNCERTAIN" : "INCONSISTENT"}
+              </p>
+            </div>
+          </div>
+          <p className="text-[10px] text-white/30 mt-3">
+            Semantic similarity cross-referenced against real-world news headlines to detect unsupported claims.
+          </p>
+        </div>
+      )}
+
+      {/* OCR Extracted Text */}
+      {result.ocr_text && result.ocr_text.trim().length > 0 && (
+        <div className="glass rounded-3xl border border-white/10 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="w-4 h-4 text-amber-400" />
+            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">OCR Extracted Text</h3>
+            <span className="ml-auto text-[10px] text-white/30">{result.ocr_text.trim().length} chars</span>
+          </div>
+          <pre className="text-xs text-white/70 bg-black/40 rounded-xl p-4 border border-white/5 whitespace-pre-wrap break-words max-h-48 overflow-y-auto font-mono leading-relaxed">
+            {result.ocr_text.trim()}
+          </pre>
+          <p className="text-[10px] text-white/30 mt-3">
+            Text extracted from the image via Tesseract OCR and fed into the truthfulness pipeline.
+          </p>
+        </div>
+      )}
 
       {/* Advanced Debug Section */}
       <DebugPanel data={result} />

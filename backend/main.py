@@ -1,9 +1,9 @@
 import logging
 import os
 
-# Hugging Face cache - prefer environment variable, default to D: drive
+# Hugging Face cache - prefer environment variable, default to /app cache
 if "HF_HOME" not in os.environ:
-    os.environ["HF_HOME"] = "d:/rep/tai/.cache/huggingface"
+    os.environ["HF_HOME"] = "/app/.cache/huggingface"
 import sys
 import time
 
@@ -41,6 +41,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def on_startup():
+    from services.warmup_service import start_warmup_service
+    start_warmup_service()
+    logger.info("Warmup service launched on startup")
 
 # ------------------------------------------------------------------
 # Lazy engine init (avoids import-time crashes if deps are missing)
@@ -128,6 +135,10 @@ class AnalysisResponse(BaseModel):
     features: FeaturesInfo
     signals: List[SignalInfo]
     metadata: MetadataInfo
+    # New optional fields from extended forensics layers
+    audio_score: Optional[float] = None
+    news_consistency_score: Optional[float] = None
+    ocr_text: Optional[str] = None
 
 class JobResponse(BaseModel):
     status: str

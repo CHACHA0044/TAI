@@ -27,6 +27,7 @@ except Exception:
     HAS_FEATURES = False
 
 from services.trust_agents import TrustAgent
+from services.news_search_agent import NewsSearchAgent
 from utils.url_extractor import extract_content, get_claims
 
 try:
@@ -123,6 +124,14 @@ class InferenceEngine:
         except Exception as e:
             logger.warning(f"TrustAgent failed: {e} — external verification disabled")
             self.trust_agent = None
+
+        # News search agent (lazy — shares the sentence-transformer model with TrustAgent)
+        try:
+            self.news_agent = NewsSearchAgent()
+            logger.info("NewsSearchAgent initialised")
+        except Exception as e:
+            logger.warning(f"NewsSearchAgent failed: {e}")
+            self.news_agent = None
 
     def _load_model(self, model_path):
         """Load multi-task RoBERTa or fall back to MockModel."""
@@ -248,6 +257,15 @@ class InferenceEngine:
             else 0.5
         )
 
+        # 4.5 News consistency score
+        news_consistency_score = None
+        if self.news_agent:
+            try:
+                news_consistency_score = self.news_agent.get_consistency_score(content[:500])
+                logger.info(f"News consistency score: {news_consistency_score:.2f}")
+            except Exception as exc:
+                logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
+
         # 5. Fusion & self-check
         final_truth_score = (truth_score * 0.6) + (avg_external_cred * 0.4)
         if ai_generated_score > 0.8 and avg_external_cred < 0.6:
@@ -286,6 +304,7 @@ class InferenceEngine:
                 },
             },
             "signals": signals,
+            **({"news_consistency_score": round(news_consistency_score, 2)} if news_consistency_score is not None else {}),
             "metadata": {
                 "model": "roberta-base + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
