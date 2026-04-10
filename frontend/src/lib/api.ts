@@ -1,6 +1,6 @@
 import { AnalysisResult, JobResponse } from './types';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'https://prana-v12-truthguard-api.hf.space';
 
 export async function analyzeText(text: string): Promise<AnalysisResult> {
   const response = await fetch(`${API_BASE_URL}/analyze-text`, {

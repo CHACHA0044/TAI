@@ -31,19 +31,18 @@ Built with **Next.js 15** and **Shadcn UI**, the frontend is designed for high-d
 
 ## 📂 Project Structure & Key Files
 
-```bash
 tai/
-├── backend/
-│   ├── inference/engine.py     # 🚀 The Heart: Coordinates model and agents
-│   ├── training/model.py       # 🧠 The Brain: Multi-task RoBERTa architecture
-│   ├── services/trust_agents.py # 🕵️ The Fact-Checker: Handles claim verification
-│   └── train_full.py           # ⚗️ The Lab: Main training script for 75k samples
-├── src/
-│   ├── components/             # 🧱 The Building Blocks: Reusable UI cards/bars
-│   ├── lib/api.ts              # 📞 The Bridge: Type-safe API client for backend
-│   └── app/                    # 🗺️ The Map: Main Next.js routing structure
-└── COLLABORATORS.md            # 🤝 The Community: How to help out
-```
+├── frontend/                   # 🎨 Frontend (Next.js 15 + Shadcn UI)
+│   ├── src/                    # 🗺️ Next.js routing & components
+│   ├── public/                 # 🖼️ Static assets
+│   └── package.json            # 📦 Dependencies & scripts
+├── backend/                    # 🧠 Backend (FastAPI + Python)
+│   ├── inference/engine.py     # 🚀 Coordination logic
+│   ├── training/model.py       # 🧠 RoBERTa architecture
+│   ├── main.py                 # 📞 API entry point
+│   └── requirements.txt        # 🐍 Python dependencies
+├── netlify.toml                # 🌐 Netlify deployment config
+└── COLLABORATORS.md            # 🤝 Contributing guide
 
 ---
 
@@ -51,18 +50,40 @@ tai/
 
 ### 1. Backend Setup
 ```bash
+# From the root directory
 cd backend
+python -m venv venv
+# Windows:
+venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
 pip install -r requirements.txt
 python main.py
 ```
-*Note: On first run, it will attempt to load the RoBERTa model. If no local weights exist, it will fallback to a mock mode or download base weights.*
+*The API will run on `http://localhost:8000` (FastAPI default) or `http://localhost:5000` (Mock/Node default).*
 
 ### 2. Frontend Setup
 ```bash
+# From the root directory
+cd frontend
 npm install
 npm run dev
 ```
 Open [http://localhost:3000](http://localhost:3000) to see the dashboard.
+
+---
+
+## 🌐 Deployment
+
+### Frontend (Netlify)
+The repository is prepared for zero-config deployment on **Netlify**.
+- **Base directory**: `frontend`
+- **Build command**: `npm run build`
+- **Publish directory**: `.next`
+
+### Backend (Hugging Face)
+The backend is optimized for deployment as a **Hugging Face Space** using Docker or a Python environment.
+- Production API URL: `https://prana-v12-truthguard-api.hf.space`
 
 ---
 
