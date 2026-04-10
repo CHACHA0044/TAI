@@ -19,10 +19,13 @@ export interface AnalysisResult {
     confidence: number;
   }[];
   explanation: string;
+  category?: "REAL" | "AI_GENERATED" | "DEEPFAKE";
+  source?: string;
   metadata: {
     model: string;
     latency_ms: number;
     timestamp: string;
+    raw_metadata?: Record<string, any>;
   };
 }
 

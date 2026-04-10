@@ -56,3 +56,4 @@ __pycache__/
 *.pth
 *.log
 checkpoint.pt
+/.cache/

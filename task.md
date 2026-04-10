@@ -1,0 +1,5 @@
+- [x] Implement `ImageEngine` in `backend/inference/image_engine.py`
+- [x] Add `/analyze-image` endpoint in `backend/main.py`
+- [x] Connect frontend API in `src/lib/api.ts`
+- [x] Verify integration and C: drive constraints
+- [x] Final walkthrough created

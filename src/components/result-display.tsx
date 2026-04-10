@@ -9,7 +9,9 @@ import {
   ExternalLink,
   Target,
   BrainCircuit,
-  Scale
+  Scale,
+  Globe,
+  Cpu
 } from "lucide-react";
 import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
@@ -22,9 +24,21 @@ interface ResultDisplayProps {
 export function ResultDisplay({ result }: ResultDisplayProps) {
   // Determine verdict based on truth score
   const getVerdict = () => {
+    // If we have a specific category, use that first for clearer results
+    if (result.category) {
+      switch (result.category) {
+        case "AI_GENERATED":
+          return { label: "AI Generated", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" };
+        case "DEEPFAKE":
+          return { label: "Deepfake Found", color: "text-amber-400", icon: ShieldQuestion, bg: "bg-amber-500/10", border: "border-amber-500/30" };
+        case "REAL":
+          return { label: "Organic Photo", color: "text-emerald-400", icon: ShieldCheck, bg: "bg-emerald-500/10", border: "border-emerald-500/30" };
+      }
+    }
+
     if (result.truth_score > 0.7) return { label: "Authentic", color: "text-emerald-400", icon: ShieldCheck, bg: "bg-emerald-500/10", border: "border-emerald-500/30" };
     if (result.truth_score > 0.4) return { label: "Unverified", color: "text-amber-400", icon: ShieldQuestion, bg: "bg-amber-500/10", border: "border-amber-500/30" };
-    return { label: "Likely Fake", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" };
+    return { label: "Evidence of Fake", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" };
   };
 
   const verdict = getVerdict();
@@ -58,25 +72,51 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       </div>
 
       {/* Core Score Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {result.category ? (
+          <div className="glass rounded-2xl border border-white/10 p-5 group hover:border-white/20 transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-2 rounded-lg bg-white/5">
+                <Globe className="w-4 h-4 text-emerald-400" />
+              </div>
+            </div>
+            <p className="text-xs font-bold text-white/80 mb-1">Source Model</p>
+            <p className="text-lg font-black text-white/90 truncate">{result.source || "Unknown"}</p>
+            <p className="text-[10px] text-white/30 leading-tight mt-1">Identified via metadata & digital trace.</p>
+          </div>
+        ) : (
+          <ScoreCard 
+            label="Truth Score" 
+            score={result.truth_score} 
+            icon={<Target className="w-4 h-4 text-emerald-400" />}
+            description="Factual accuracy probability."
+          />
+        )}
+        
         <ScoreCard 
-          label="Truth Score" 
-          score={result.truth_score} 
-          icon={<Target className="w-4 h-4 text-emerald-400" />}
-          description="Factual accuracy probability."
-        />
-        <ScoreCard 
-          label="AI Detection" 
+          label="AI Likelihood" 
           score={result.ai_generated_score} 
           icon={<BrainCircuit className="w-4 h-4 text-rose-400" />}
-          description="Likelihood of machine origin."
+          description={result.category ? "Neural artifact probability." : "Likelihood of machine origin."}
         />
-        <ScoreCard 
-          label="Bias Analysis" 
-          score={result.bias_score} 
-          icon={<Scale className="w-4 h-4 text-amber-400" />}
-          description="Propaganda & slant detection."
-        />
+
+        {!result.category && (
+          <ScoreCard 
+            label="Bias Analysis" 
+            score={result.bias_score} 
+            icon={<Scale className="w-4 h-4 text-amber-400" />}
+            description="Propaganda & slant detection."
+          />
+        )}
+
+        {result.category && (
+          <ScoreCard 
+            label="Forensic ELA" 
+            score={result.credibility_score} 
+            icon={<Cpu className="w-4 h-4 text-amber-400" />}
+            description="Consistency of internal noise levels."
+          />
+        )}
       </div>
 
       {/* Explanation Section */}
@@ -92,7 +132,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         {/* Verification Signals */}
         {result.signals && result.signals.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-white/5">
-            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">External Corroboration</h4>
+            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Forensic Layers</h4>
             <div className="grid gap-3">
               {result.signals.map((signal, i) => (
                 <div key={i} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
@@ -100,9 +140,28 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                   <div className="flex items-center gap-3">
                     <ScoreBar label="" score={signal.confidence} showPercentage={false} color={signal.verified ? "bg-emerald-500" : "bg-rose-500"} />
                     <span className={`text-[10px] font-bold ${signal.verified ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {signal.verified ? 'VERIFIED' : 'REFUTED'}
+                      {signal.verified ? 'CLEAN' : 'SUSPICIOUS'}
                     </span>
                   </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Raw Metadata Section */}
+        {result.metadata?.raw_metadata && Object.keys(result.metadata.raw_metadata).length > 0 && (
+          <div className="mt-6 pt-6 border-t border-white/5">
+            <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4 text-center">Extraction: Source Metadata</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {Object.entries(result.metadata.raw_metadata).map(([key, value]) => (
+                <div key={key} className="p-3 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
+                  <span className="text-[10px] uppercase font-bold text-white/20 tracking-wider">
+                    {key.replace(/_/g, ' ')}
+                  </span>
+                  <span className="text-xs font-mono text-white/80 truncate" title={String(value)}>
+                    {String(value)}
+                  </span>
                 </div>
               ))}
             </div>

@@ -1,9 +1,12 @@
 import logging
 import os
+
+# Set Hugging Face cache to D: drive to avoid C: drive usage
+os.environ["HF_HOME"] = "d:/rep/tai/.cache/huggingface"
 import sys
 import time
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List
@@ -36,6 +39,7 @@ app.add_middleware(
 # Lazy engine init (avoids import-time crashes if deps are missing)
 # ------------------------------------------------------------------
 _engine = None
+_image_engine = None
 
 
 def get_engine():
@@ -46,6 +50,16 @@ def get_engine():
         _engine = InferenceEngine()
         logger.info("InferenceEngine ready")
     return _engine
+
+
+def get_image_engine():
+    global _image_engine
+    if _image_engine is None:
+        logger.info("Initializing ImageEngine...")
+        from inference.image_engine import ImageEngine
+        _image_engine = ImageEngine()
+        logger.info("ImageEngine ready")
+    return _image_engine
 
 
 # ------------------------------------------------------------------
@@ -79,6 +93,7 @@ class MetadataInfo(BaseModel):
     model: str
     latency_ms: int
     timestamp: str
+    raw_metadata: Optional[dict] = None
 
 
 class AnalysisResponse(BaseModel):
@@ -88,6 +103,8 @@ class AnalysisResponse(BaseModel):
     credibility_score: float
     confidence_score: float
     explanation: str
+    category: Optional[str] = None
+    source: Optional[str] = "Unknown"
     features: FeaturesInfo
     signals: List[SignalInfo]
     metadata: MetadataInfo
@@ -154,6 +171,23 @@ async def analyze_url(request: AnalysisRequest):
         raise
     except Exception as e:
         logger.exception("Error during URL analysis")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/analyze-image", response_model=AnalysisResponse)
+async def analyze_image(file: UploadFile = File(...)):
+    logger.info(f"POST /analyze-image — {file.filename}")
+
+    try:
+        if not file.content_type.startswith("image/"):
+            raise HTTPException(status_code=400, detail="File must be an image")
+
+        contents = await file.read()
+        engine = get_image_engine()
+        result = engine.analyze(contents, filename=file.filename)
+        return result
+    except Exception as e:
+        logger.exception("Error during image analysis")
         raise HTTPException(status_code=500, detail=str(e))
 
 

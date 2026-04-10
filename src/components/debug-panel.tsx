@@ -40,16 +40,27 @@ export function DebugPanel({ data }: DebugPanelProps) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-6 grid grid-cols-2 gap-4 bg-black/40 border-x border-b border-white/10 rounded-b-2xl">
-              {/* Stylometry */}
+            <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6 bg-black/40 border-x border-b border-white/10 rounded-b-2xl">
+              {/* Primary Analysis Metrics */}
               <div className="space-y-4">
                 <h4 className="flex items-center gap-2 text-xs font-black text-rose-400/80 uppercase tracking-widest">
-                  <Activity className="w-3 h-3" /> Stylometry
+                  <Activity className="w-3 h-3" /> {data.category ? "Forensic Layers" : "Stylometry"}
                 </h4>
                 <div className="space-y-3">
-                  <MetricRow label="Sentence Variance" value={(stylometry?.sentence_length_variance ?? 0).toFixed(2)} />
-                  <MetricRow label="Repetition Score" value={(stylometry?.repetition_score ?? 0).toFixed(4)} />
-                  <MetricRow label="Lexical Diversity" value={(stylometry?.lexical_diversity ?? 0).toFixed(4)} />
+                  {data.category ? (
+                    <>
+                      <MetricRow label="Neural Signal Strength" value={(stylometry?.sentence_length_variance ?? 0).toFixed(4)} />
+                      <MetricRow label="ELA Dispersion" value={perplexity.toFixed(4)} />
+                      <MetricRow label="Metadata Count" value={stylometry?.repetition_score ?? 0} />
+                      <MetricRow label="Scan Confidence" value={(stylometry?.lexical_diversity ?? 0).toFixed(4)} />
+                    </>
+                  ) : (
+                    <>
+                      <MetricRow label="Sentence Variance" value={(stylometry?.sentence_length_variance ?? 0).toFixed(2)} />
+                      <MetricRow label="Repetition Score" value={(stylometry?.repetition_score ?? 0).toFixed(4)} />
+                      <MetricRow label="Lexical Diversity" value={(stylometry?.lexical_diversity ?? 0).toFixed(4)} />
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -59,9 +70,10 @@ export function DebugPanel({ data }: DebugPanelProps) {
                   <Zap className="w-3 h-3" /> System Performance
                 </h4>
                 <div className="space-y-3">
-                  <MetricRow label="Perplexity" value={perplexity.toFixed(1)} />
-                  <MetricRow label="Model" value={model} />
-                  <MetricRow label="Latency" value={`${latency}ms`} />
+                  {!data.category && <MetricRow label="Perplexity" value={perplexity.toFixed(1)} />}
+                  <MetricRow label="Active Model" value={model} />
+                  <MetricRow label="Processing Latency" value={`${latency}ms`} />
+                  <MetricRow label="Timestamp" value={new Date(data.metadata.timestamp).toLocaleTimeString()} />
                 </div>
               </div>
             </div>
