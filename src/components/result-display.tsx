@@ -155,7 +155,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             })}
           </div>
           <p className="text-[10px] text-white/25 mt-3">
-            Each layer is an independent forensic check. Multiple FAILs = high confidence of manipulation or synthesis.
+            Each layer is an independent forensic check. 2 or more FAILs = high confidence of manipulation or synthesis.
           </p>
         </div>
       )}
