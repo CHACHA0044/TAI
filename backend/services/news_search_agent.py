@@ -44,7 +44,7 @@ class NewsSearchAgent:
         self.api_key = os.getenv("GNEWS_API_KEY", "").strip()
         self.use_api = bool(self.api_key)
         mode = "GNews API" if self.use_api else "mock headlines"
-        logger.info(f"NewsSearchAgent initialised — using {mode}")
+        logger.info(f"NewsSearchAgent initialized — using {mode}")
 
     # ------------------------------------------------------------------
     # Public API

@@ -191,7 +191,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             </div>
           </div>
           <p className="text-[10px] text-white/30 mt-3">
-            Spectral and temporal audio features analysed for synthetic speech indicators (TTS, voice cloning).
+            Spectral and temporal audio features analyzed for synthetic speech indicators (TTS, voice cloning).
           </p>
         </div>
       )}

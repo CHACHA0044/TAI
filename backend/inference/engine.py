@@ -128,7 +128,7 @@ class InferenceEngine:
         # News search agent (lazy — shares the sentence-transformer model with TrustAgent)
         try:
             self.news_agent = NewsSearchAgent()
-            logger.info("NewsSearchAgent initialised")
+            logger.info("NewsSearchAgent initialized")
         except Exception as e:
             logger.warning(f"NewsSearchAgent failed: {e}")
             self.news_agent = None

@@ -428,7 +428,7 @@ class VideoEngine:
                 return 1.0
 
             try:
-                import librosa  # lazy import; not always installed
+                import librosa
 
                 y, sr = librosa.load(tmp_audio, sr=16000, mono=True)
             except ImportError:
@@ -451,12 +451,23 @@ class VideoEngine:
             mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
             mfcc_var = float(np.mean(np.var(mfcc, axis=1)))
 
-            # Step 3 — heuristic scoring (all components in [0, 1])
-            flatness_score = min(flatness * 20.0, 1.0)          # low flatness → suspicious
-            zcr_score      = min(zcr_var * 2_000.0, 1.0)        # low variance → suspicious
-            mfcc_score     = min(mfcc_var / 80.0, 1.0)          # low MFCC var → suspicious
+            # Step 3 — heuristic scoring (all components normalised to [0, 1]).
+            # Scaling factors are empirical: real human speech typically has
+            # flatness ~0.01-0.05, zcr_var ~0.0002-0.001, mfcc_var ~20-80.
+            # We scale so that a typical real-speech value maps near 1.0.
+            _FLATNESS_SCALE = 20.0   # flatness 0.05 → 1.0
+            _ZCR_SCALE      = 2_000.0  # zcr_var 0.0005 → 1.0
+            _MFCC_SCALE     = 80.0   # mfcc_var 80 → 1.0
+            # Weights: MFCC is most discriminative, ZCR second, flatness third
+            _W_ZCR  = 0.35
+            _W_MFCC = 0.45
+            _W_FLAT = 0.20
 
-            audio_score = (zcr_score * 0.35 + mfcc_score * 0.45 + flatness_score * 0.20)
+            flatness_score = min(flatness * _FLATNESS_SCALE, 1.0)
+            zcr_score      = min(zcr_var * _ZCR_SCALE, 1.0)
+            mfcc_score     = min(mfcc_var / _MFCC_SCALE, 1.0)
+
+            audio_score = zcr_score * _W_ZCR + mfcc_score * _W_MFCC + flatness_score * _W_FLAT
             audio_score = round(max(0.0, min(1.0, audio_score)), 2)
 
             logger.info(

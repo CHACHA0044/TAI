@@ -6,7 +6,7 @@ Runs as a background daemon thread.  On each tick it:
   2. Executes a batch of random math operations (keeps CPU slightly active).
   3. Logs the result so the HF Spaces log stream stays live.
 
-Start it by calling ``start_warmup_service()`` once during app initialisation.
+Start it by calling ``start_warmup_service()`` once during app initialization.
 """
 
 import logging
