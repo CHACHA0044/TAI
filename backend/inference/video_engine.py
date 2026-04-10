@@ -5,9 +5,11 @@ import time
 import logging
 import hashlib
 import numpy as np
+import torch
 from PIL import Image
 from datetime import datetime, timezone
 from typing import List, Tuple, Optional
+from transformers import BlipProcessor, BlipForConditionalGeneration
 
 logger = logging.getLogger("truthguard.video")
 
@@ -51,6 +53,10 @@ class VideoEngine:
         # Load OpenCV face detector
         face_cascade_path = cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
         self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
+
+        # Semantic Layer (Lazy loaded)
+        self.blip_processor = None
+        self.blip_model     = None
 
     # ------------------------------------------------------------------
     # Public API
@@ -121,7 +127,11 @@ class VideoEngine:
             temporal_variance = float(np.var(ai_scores)) if len(ai_scores) > 1 else 0.0
             logger.info(f"Temporal variance: {temporal_variance:.4f}")
 
-            # 7. Aggregation
+            # 7. Semantic Intelligence (The "What is happening" layer)
+            scene_summary, tags = self._describe_scenes(frames)
+            logger.info(f"Scene intelligence: {scene_summary}")
+
+            # 8. Aggregation
             avg_ai    = float(np.mean(ai_scores))
             avg_ela   = float(np.mean(ela_scores))
             face_hit  = any(face_hits)
@@ -142,7 +152,9 @@ class VideoEngine:
                 frames_analysed=len(frames), video_meta=video_meta,
                 confidence=confidence, elapsed_ms=elapsed,
                 signals=signal_notes,
-                frame_scores=ai_scores
+                frame_scores=ai_scores,
+                summary=scene_summary,
+                tags=tags
             )
 
         finally:
@@ -258,6 +270,66 @@ class VideoEngine:
         return results
 
     # ------------------------------------------------------------------
+    # Semantic Intelligence Layer
+    # ------------------------------------------------------------------
+
+    def _lazy_load_blip(self):
+        if self.blip_model is None:
+            logger.info("Loading BLIP semantic model (approx 900MB)...")
+            try:
+                self.blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+                self.blip_model     = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
+                
+                # Move to CPU explicitly and use float32 for maximum compatibility on 8GB machines
+                self.blip_model.to("cpu")
+                self.blip_model.eval()
+                logger.info("BLIP semantic model loaded successfully.")
+            except Exception as e:
+                logger.error(f"Failed to load BLIP model: {e}")
+                return False
+        return True
+
+    def _describe_scenes(self, frames: List[Image.Image]) -> Tuple[str, List[str]]:
+        """Generate a summarized scene description using BLIP."""
+        if not self._lazy_load_blip():
+            return "Semantic analysis unavailable (model load error)", []
+
+        # Select up to 3 frames (Start, Middle, End of samples)
+        indices = [0, len(frames)//2, len(frames)-1]
+        indices = sorted(list(set([i for i in indices if i < len(frames)])))
+        
+        captions = []
+        try:
+            with torch.no_grad():
+                for idx in indices:
+                    img = frames[idx]
+                    inputs = self.blip_processor(img, return_tensors="pt")
+                    out = self.blip_model.generate(**inputs)
+                    cap = self.blip_processor.decode(out[0], skip_special_tokens=True)
+                    if cap and cap not in captions:
+                        captions.append(cap.capitalize())
+
+            if not captions:
+                return "No clear visual context identified.", []
+
+            # Basic aggregation logic
+            summary = "The video shows " + " followed by ".join(captions)
+            if len(captions) == 1:
+                summary = captions[0]
+            
+            # Extract tags (very simple keyword approach from captions)
+            all_text = " ".join(captions).lower()
+            stop_words = {"a", "the", "in", "on", "is", "of", "and", "by", "with", "an"}
+            potential_tags = [w.strip(",.!") for w in all_text.split() if len(w) > 3 and w not in stop_words]
+            tags = sorted(list(set(potential_tags)))[:8]
+
+            return summary, tags
+
+        except Exception as e:
+            logger.error(f"Semantic analysis error: {e}")
+            return "Error during scene description generation.", []
+
+    # ------------------------------------------------------------------
     # Metadata & Source
     # ------------------------------------------------------------------
 
@@ -339,7 +411,7 @@ class VideoEngine:
     def _build_result(
         self, category, source, ai_score, ela_score, temporal_variance,
         face_hit, frames_analysed, video_meta, confidence, elapsed_ms,
-        signals, frame_scores=None
+        signals, frame_scores=None, summary="", tags=None
     ) -> dict:
         explanation = self._generate_explanation(
             category, source, ai_score, ela_score, temporal_variance, face_hit
@@ -370,6 +442,10 @@ class VideoEngine:
                 },
             },
             "signals": signal_list,
+            "intelligence": {
+                "summary": summary,
+                "tags": tags or []
+            },
             "metadata": {
                 "model":        "VideoEngine-v1 + prithivMLmods/Deep-Fake-Detector-v2-Model",
                 "latency_ms":   elapsed_ms,

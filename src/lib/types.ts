@@ -18,6 +18,10 @@ export interface AnalysisResult {
     verified: boolean;
     confidence: number;
   }[];
+  intelligence?: {
+    summary: string;
+    tags: string[];
+  };
   explanation: string;
   category?: "REAL" | "AI_GENERATED" | "DEEPFAKE";
   source?: string;
