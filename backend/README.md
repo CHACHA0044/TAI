@@ -12,7 +12,7 @@ app_port: 7860
 
 This container runs the FastAPI server, Celery Worker, and Redis storage for the TruthGuard platform.
 
-## Architecture
+## Architecture 
 - **API**: FastAPI (Port 7860)
 - **Worker**: Celery (Concurrency: 1)
 - **Broker**: Redis (Internal)
