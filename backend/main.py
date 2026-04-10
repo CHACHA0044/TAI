@@ -1,16 +1,23 @@
 import logging
 import os
 
-# Set Hugging Face cache to D: drive to avoid C: drive usage
-os.environ["HF_HOME"] = "d:/rep/tai/.cache/huggingface"
+# Hugging Face cache - prefer environment variable, default to D: drive
+if "HF_HOME" not in os.environ:
+    os.environ["HF_HOME"] = "d:/rep/tai/.cache/huggingface"
 import sys
 import time
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Union
 import uvicorn
+from celery.result import AsyncResult
+
+from utils.cache import get_cached_result, set_cached_result
+from utils.hashing import get_content_hash, get_text_hash
+from celery_app import celery_app
+from inference.tasks import process_video_task
 
 # ------------------------------------------------------------------
 # Logging setup
@@ -62,6 +69,19 @@ def get_image_engine():
     return _image_engine
 
 
+_video_engine = None
+
+
+def get_video_engine():
+    global _video_engine
+    if _video_engine is None:
+        logger.info("Initializing VideoEngine...")
+        from inference.video_engine import VideoEngine
+        _video_engine = VideoEngine()
+        logger.info("VideoEngine ready")
+    return _video_engine
+
+
 # ------------------------------------------------------------------
 # Request / Response models
 # ------------------------------------------------------------------
@@ -109,6 +129,18 @@ class AnalysisResponse(BaseModel):
     signals: List[SignalInfo]
     metadata: MetadataInfo
 
+class JobResponse(BaseModel):
+    status: str
+    job_id: Optional[str] = None
+    result: Optional[AnalysisResult] = None # For compatibility if already finished
+    progress: Optional[str] = None
+
+class AnalysisUnionResponse(BaseModel):
+    # This helps the frontend handle both sync (cached) and async (queued) responses
+    status: str
+    job_id: Optional[str] = None
+    result: Optional[AnalysisResponse] = None
+
 
 # ------------------------------------------------------------------
 # Helpers
@@ -138,13 +170,22 @@ async def analyze_text(request: AnalysisRequest):
     logger.info(f"POST /analyze-text — {len(content)} chars")
 
     try:
+        # Cache check
+        content_hash = get_text_hash(content)
+        cached = get_cached_result("text", content_hash)
+        if cached:
+            return cached
+
         engine = get_engine()
         result = engine.analyze(content)
         if not result:
             raise HTTPException(
                 status_code=400,
-                detail="Analysis returned no result. Content may be too short or extraction failed.",
+                detail="Analysis returned no result.",
             )
+        
+        # Cache set
+        set_cached_result("text", content_hash, result)
         return result
     except HTTPException:
         raise
@@ -189,6 +230,55 @@ async def analyze_image(file: UploadFile = File(...)):
     except Exception as e:
         logger.exception("Error during image analysis")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.post("/analyze-video") # Returns Union
+async def analyze_video(file: UploadFile = File(...)):
+    logger.info(f"POST /analyze-video — {file.filename} ({file.content_type})")
+
+    try:
+        allowed = {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/avi"}
+        if file.content_type not in allowed and not (file.filename or "").lower().endswith((".mp4", ".mov", ".avi", ".webm")):
+            raise HTTPException(status_code=400, detail="File must be a video (mp4, mov, avi, webm)")
+
+        contents = await file.read()
+        
+        # 1. Hashing & Caching
+        content_hash = get_content_hash(contents)
+        cached = get_cached_result("video", content_hash)
+        if cached:
+            return {"status": "complete", "result": cached}
+
+        # 2. Async Queueing
+        task = process_video_task.delay(contents, file.filename or "upload.mp4", content_hash)
+        logger.info(f"Video analysis queued — task_id: {task.id}")
+
+        return {"status": "processing", "job_id": task.id}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error during video analysis submission")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/jobs/{job_id}")
+async def get_job_status(job_id: str):
+    """Query Celery task status."""
+    task_result = AsyncResult(job_id, app=celery_app)
+    
+    if task_result.state == "SUCCESS":
+        return {"status": "complete", "result": task_result.result}
+    elif task_result.state == "FAILURE":
+        return {"status": "failed", "error": str(task_result.info)}
+    
+    # Check for custom progress meta
+    progress = "Processing..."
+    if isinstance(task_result.info, dict):
+        progress = task_result.info.get("step", "Processing...")
+
+    return {"status": "processing", "progress": progress}
 
 
 if __name__ == "__main__":

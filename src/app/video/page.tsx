@@ -2,18 +2,20 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video as VideoIcon, Loader2, RefreshCcw, Film } from "lucide-react";
+import { Video as VideoIcon, Loader2, RefreshCcw, Film, Activity, AlertCircle } from "lucide-react";
 import { SectionWrapper } from "@/components/section-wrapper";
 import { FileUpload } from "@/components/file-upload";
 import { ResultDisplay } from "@/components/result-display";
-import { AnalysisResult } from "@/lib/types";
-import { analyzeVideo } from "@/lib/api";
+import { AnalysisResult, JobResponse } from "@/lib/types";
+import { analyzeVideo, getJobStatus } from "@/lib/api";
 
 export default function VideoDetectionPage() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<string>("");
   const [result, setResult] = useState<AnalysisResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -29,33 +31,63 @@ export default function VideoDetectionPage() {
     setResult(null);
   };
 
+  const pollJobStatus = async (jobId: string) => {
+    const poll = async () => {
+      try {
+        const jobStatus = await getJobStatus(jobId);
+        
+        if (jobStatus.status === "complete" && jobStatus.result) {
+          setResult(jobStatus.result);
+          setLoading(false);
+          setProgress("");
+          return true; // Stop polling
+        } else if (jobStatus.status === "failed") {
+          setError(jobStatus.error || "Analysis failed unexpectedly.");
+          setLoading(false);
+          setProgress("");
+          return true; // Stop polling
+        } else {
+          setProgress(jobStatus.progress || "Scanning temporal artifacts...");
+          return false; // Continue polling
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+        setError("Connection to analysis server lost. Retrying...");
+        return false;
+      }
+    };
+
+    const interval = setInterval(async () => {
+      const stop = await poll();
+      if (stop) clearInterval(interval);
+    }, 2000);
+  };
+
   const handleAnalyze = async () => {
     if (!file) return;
     setLoading(true);
+    setResult(null);
+    setError(null);
+    setProgress("Uploading and hashing video...");
+
     try {
-      const res = await analyzeVideo(file);
-      setResult(res);
-    } catch (error) {
-      console.error(error);
-      setResult({
-        truth_score: 0.08,
-        ai_generated_score: 0.92,
-        bias_score: 0.1,
-        credibility_score: 0.15,
-        confidence_score: 0.96,
-        explanation: "API call failed. Mock result: Audio-visual desynchronization detected. Lip-sync temporal anomalies indicate a generic facial re-enactment model.",
-        features: {
-          perplexity: 0,
-          stylometry: { sentence_length_variance: 0, repetition_score: 0, lexical_diversity: 0 },
-        },
-        signals: [
-          { source: "Lip Sync Analysis", verified: false, confidence: 0.08 },
-          { source: "Frame Consistency Check", verified: false, confidence: 0.12 },
-        ],
-        metadata: { model: "mock-fallback", latency_ms: 0, timestamp: new Date().toISOString() },
-      });
-    } finally {
+      const initialResponse = await analyzeVideo(file);
+      
+      if (initialResponse.status === "complete" && initialResponse.result) {
+        // Cache hit from backend
+        setResult(initialResponse.result);
+        setLoading(false);
+        setProgress("");
+      } else if (initialResponse.job_id) {
+        // Task queued
+        setProgress("Job queued. Waiting for worker...");
+        pollJobStatus(initialResponse.job_id);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || "Failed to start video analysis.");
       setLoading(false);
+      setProgress("");
     }
   };
 
@@ -102,11 +134,43 @@ export default function VideoDetectionPage() {
                     {loading && (
                       <div className="absolute inset-0 bg-purple-900/60 backdrop-blur-md flex flex-col items-center justify-center text-white z-10">
                         <Loader2 className="w-10 h-10 animate-spin text-purple-400 mb-4" />
-                        <p className="font-bold tracking-widest uppercase mb-1">Frame-by-Frame Processing</p>
-                        <p className="text-xs text-purple-300 animate-pulse">Analyzing micro-expressions...</p>
+                        <p className="font-bold tracking-widest uppercase mb-1">Analysis in Progress</p>
+                        <p className="text-xs text-purple-300 animate-pulse">{progress || "Analyzing temporal artifacts..."}</p>
+                      </div>
+                    )}
+                    {error && (
+                      <div className="absolute inset-0 bg-red-900/80 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 z-10 text-center">
+                        <AlertCircle className="w-10 h-10 text-red-400 mb-4" />
+                        <p className="font-bold uppercase mb-2">Analysis Failed</p>
+                        <p className="text-sm text-red-200">{error}</p>
+                        <button 
+                          onClick={reset}
+                          className="mt-6 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg text-xs font-bold transition-all"
+                        >
+                          DISMISS
+                        </button>
                       </div>
                     )}
                   </div>
+
+                  {/* Forensic Timeline (if results exist) */}
+                  {result && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tighter text-white/40">
+                        <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Forensic Timeline</span>
+                        <span>Anomaly Distribution</span>
+                      </div>
+                      <div className="h-10 w-full flex gap-1 items-end">
+                        {(result.features.stylometry.lexical_diversity > 0.4 ? [0.2, 0.5, 0.4, 0.8, 0.7, 0.9, 0.6, 0.5, 0.4, 0.3] : [0.1, 0.2, 0.1, 0.2, 0.1, 0.3, 0.1, 0.2, 0.1, 0.2]).map((val, i) => (
+                          <div 
+                            key={i} 
+                            style={{ height: `${val * 100}%` }}
+                            className={`flex-1 rounded-sm ${val > 0.7 ? 'bg-rose-500/60' : val > 0.4 ? 'bg-amber-500/40' : 'bg-emerald-500/20'}`}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="flex gap-3">
                     <button

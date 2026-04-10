@@ -31,6 +31,14 @@ export interface AnalysisResult {
 
 export type DetectionMode = "text" | "image" | "video";
 
+export interface JobResponse {
+  status: "processing" | "complete" | "failed";
+  job_id?: string;
+  result?: AnalysisResult;
+  progress?: string;
+  error?: string;
+}
+
 export interface NavItem {
   label: string;
   href: string;

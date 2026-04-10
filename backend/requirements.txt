@@ -16,3 +16,7 @@ openai
 python-dotenv
 requests
 numpy
+Pillow
+opencv-python-headless
+celery
+redis

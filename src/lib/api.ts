@@ -1,4 +1,4 @@
-import { AnalysisResult } from './types';
+import { AnalysisResult, JobResponse } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
@@ -50,20 +50,32 @@ export async function analyzeImage(image: File): Promise<AnalysisResult> {
   return response.json();
 }
 
-export async function analyzeVideo(_video: File): Promise<AnalysisResult> {
-  console.warn("analyzeVideo not yet implemented — returning mock");
-  return {
-    truth_score: 0.5,
-    ai_generated_score: 0.92,
-    bias_score: 0.1,
-    credibility_score: 0.5,
-    confidence_score: 0.96,
-    explanation: "Video analysis is currently in mock mode.",
-    features: {
-      perplexity: 0,
-      stylometry: { sentence_length_variance: 0, repetition_score: 0, lexical_diversity: 0 },
-    },
-    signals: [],
-    metadata: { model: "mock", latency_ms: 0, timestamp: new Date().toISOString() },
-  };
+export async function analyzeVideo(video: File): Promise<JobResponse> {
+  const formData = new FormData();
+  formData.append('file', video);
+
+  const response = await fetch(`${API_BASE_URL}/analyze-video`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Network error' }));
+    throw new Error(error.detail || 'Failed to analyze video');
+  }
+
+  return response.json();
+}
+
+export async function getJobStatus(jobId: string): Promise<JobResponse> {
+  const response = await fetch(`${API_BASE_URL}/jobs/${jobId}`, {
+    method: 'GET',
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ detail: 'Network error' }));
+    throw new Error(error.detail || 'Failed to fetch job status');
+  }
+
+  return response.json();
 }
