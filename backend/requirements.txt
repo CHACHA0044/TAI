@@ -20,3 +20,5 @@ Pillow
 opencv-python-headless
 celery
 redis
+pytesseract
+librosa

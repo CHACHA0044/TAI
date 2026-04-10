@@ -31,6 +31,11 @@ export interface AnalysisResult {
     timestamp: string;
     raw_metadata?: Record<string, any>;
   };
+  // Extended forensics fields
+  audio_score?: number;
+  news_consistency_score?: number;
+  ocr_text?: string;
+  frame_scores?: number[];
 }
 
 export type DetectionMode = "text" | "image" | "video";
