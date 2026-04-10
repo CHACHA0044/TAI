@@ -132,7 +132,7 @@ class AnalysisResponse(BaseModel):
 class JobResponse(BaseModel):
     status: str
     job_id: Optional[str] = None
-    result: Optional[AnalysisResult] = None # For compatibility if already finished
+    result: Optional[AnalysisResponse] = None # For compatibility if already finished
     progress: Optional[str] = None
 
 class AnalysisUnionResponse(BaseModel):

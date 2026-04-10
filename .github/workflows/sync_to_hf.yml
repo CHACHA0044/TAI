@@ -1,0 +1,30 @@
+name: Sync to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Push to Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          git config --global user.email "deploy@github.com"
+          git config --global user.name "GitHub Action"
+          
+          # We force push the 'backend' subdirectory to the HF Space root
+          # This assumes your HF Space is set up to receive the content of the backend folder
+          git checkout -b deploy-branch
+          git filter-branch --subdirectory-filter backend/ --force
+          
+          git remote add hf https://prana-v12:$HF_TOKEN@huggingface.co/spaces/prana-v12/truthguard-api
+          git push hf deploy-branch:main --force
