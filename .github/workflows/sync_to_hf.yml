@@ -29,6 +29,10 @@ jobs:
           git subtree split --prefix=backend -b hf-deploy
           git checkout hf-deploy
           
-          # Push to Hugging Face Space using the token for authentication
-          # Use the 'hf' or 'username' as the user in the URL
-          git push -f https://prana-v12:$HF_TOKEN@huggingface.co/spaces/prana-v12/truthguard-api hf-deploy:main
+          # Push to Hugging Face Space using a credential helper for reliable token auth
+          # This avoids the "password authentication deprecated" error
+          git remote add hf https://huggingface.co/spaces/prana-v12/truthguard-api
+          git config --global credential.https://huggingface.co.helper ""
+          git config --global credential.https://huggingface.co.helper "!f() { echo \"username=hf\"; echo \"password=$HF_TOKEN\"; }; f"
+          
+          git push hf hf-deploy:main --force
