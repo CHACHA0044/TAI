@@ -1,0 +1,35 @@
+# Git ignore for HF Spaces Backend deployment
+.env
+data/
+models/
+node_modules/
+__pycache__/
+*.pyc
+.cache/
+temp/
+uploads/
+.git/
+venv/
+venv_new/
+# Ignore bulky or non-production files
+*.csv
+*.tsv
+*.jsonl
+*.parquet
+*.pt
+*.bin
+*.pth
+checkpoint.pt
+*.log
+*mock*
+create_dummy.py
+inspect_model.py
+merge_pipeline.py
+test_cases.py
+test_image_api.py
+train_full.py
+train_local.py
+verify_*.py
+server.js
+package.json
+package-lock.json

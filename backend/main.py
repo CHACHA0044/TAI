@@ -159,6 +159,15 @@ def resolve_content(request: AnalysisRequest, fallback_label: str = "text") -> s
 # ------------------------------------------------------------------
 # Endpoints
 # ------------------------------------------------------------------
+@app.get("/")
+async def root():
+    return {
+        "message": "TruthGuard AI Forensics API",
+        "docs": "/docs",
+        "status": "active"
+    }
+
+
 @app.get("/health")
 async def health():
     return {"status": "healthy", "service": "truthguard-api"}
