@@ -140,6 +140,8 @@ class InferenceEngine:
             try:
                 source = model_path or self.base_model_name
                 self.tokenizer = AutoTokenizer.from_pretrained(source)
+                if self.tokenizer.pad_token is None:
+                    self.tokenizer.pad_token = self.tokenizer.eos_token
                 config = AutoConfig.from_pretrained(source)
                 self.model = TruthGuardMultiTaskModel(config, source)
                 
@@ -170,6 +172,8 @@ class InferenceEngine:
         try:
             from transformers import AutoTokenizer as AT
             self.tokenizer = AT.from_pretrained("gpt2")
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
         except Exception:
             self.tokenizer = None
         self.model = MockModel().to(self.device)
