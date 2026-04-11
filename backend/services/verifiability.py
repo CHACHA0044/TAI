@@ -20,8 +20,29 @@ SUBJECTIVE_PATTERNS = [
     r"\bless than\b",
     r"\bbeautiful\b",
     r"\bugly\b",
-    r"\bgreat\b",
     r"\bterrible\b",
+    # Comparative adjective opinions (1 or 2 words between "more/less" and "than")
+    r"\bmore\s+\w+\s+than\b",
+    r"\bmore\s+\w+\s+\w+\s+than\b",
+    r"\bless\s+\w+\s+than\b",
+    r"\bless\s+\w+\s+\w+\s+than\b",
+    # Superlative opinion framing
+    r"\bthe\s+(most|least)\s+(underappreciated|dangerous|beautiful|reliable|important|overlooked|overrated|effective|underrated|powerful|valuable|impactful|artistic)\b",
+    r"\bthe\s+(worst|best)\s+(way|form|type|kind|method|thing)\b",
+    # Inherent value judgment
+    r"\binherently\s+(cruel|wrong|unjust|unfair|harmful|dangerous|misguided|immoral)\b",
+    # Normative claim
+    r"\bshould\s+be\s+(mandatory|banned|illegal|required|encouraged|compulsory)\b",
+    # Classic subjective assessments
+    r"\bmore\s+harm\s+than\s+good\b",
+    r"\bmost\s+(dangerous|reliable|underappreciated|misunderstood|important)\b",
+    # Additional opinion sentence patterns with no explicit "more X than" structure
+    r"\bleads?\s+to\s+a\s+(happier|healthier|longer|better)\b",
+    r"\bwould\s+make\s+(people|us|them|everyone)\b",
+    r"\bthe\s+(emptiest|loneliest|hardest|saddest|richest|purest)\s+form\b",
+    r"\bmore\s+important\s+for\b",
+    r"\bmore\s+division\s+than\b",
+    r"\bmore\s+meaningful\s+than\b",
 ]
 
 MARKETING_PATTERNS = [
@@ -48,6 +69,11 @@ SPECULATION_PATTERNS = [
     r"\bclaims? to\b",
     r"\bexpected to\b",
     r"\bpossible\b",
+    # Third-person reported belief / hedged attribution
+    r"\bbelieves?\s+(he|she|they|it|there)\b",
+    r"\ballegedly\b",
+    r"\bclaimed\s+to\s+(have|be)\b",
+    r"\breportedly\s+(has|have|found|identified|located|discovered)\b",
 ]
 
 FACTUAL_STRUCTURE_PATTERNS = [

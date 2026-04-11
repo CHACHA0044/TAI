@@ -29,6 +29,16 @@ SARCASM_PATTERNS = [
     r"\bwhat could possibly go wrong\b",
     r"\bgreat job\b",
     r"/s\b",
+    # Onion-style satirical headline markers
+    r"\barea\s+(man|woman|resident|influencer|local|father|mother|teen|startup|person)\b",
+    r"\bvows?\s+to\s+(fix|resolve|address|tackle|improve)\b",
+    r"\bvery\s+excited\s+to\s+finally\b",
+    r"\bshocked\s+to\s+(discover|learn|find)\s+that\b",
+    r"\bleast\s+(important|significant|valued)\s+priority\b",
+    r"\bdirectly\s+into\s+an?\s+unpaid\b",
+    r"\bby\s+the\s+same\s+people\s+who\s+(said|claimed|told)\b",
+    r"\balways\s+tomorrow\b",
+    r"\bwas\s+(effective|working|true|helpful)\s+all\s+along\b",
 ]
 
 OPINION_PATTERNS = [
@@ -46,6 +56,28 @@ OPINION_PATTERNS = [
     r"\bawful\b",
     r"\bmeaningless\b",
     r"\bshould\b",
+    # Comparative-adjective opinions: "more X than Y" and "less X than Y" (1 or 2 words between)
+    r"\bmore\s+\w+\s+than\b",
+    r"\bmore\s+\w+\s+\w+\s+than\b",
+    r"\bless\s+\w+\s+than\b",
+    r"\bless\s+\w+\s+\w+\s+than\b",
+    # Superlative opinion framing
+    r"\bthe\s+(most|least)\s+(underappreciated|dangerous|beautiful|reliable|important|overlooked|overrated|effective|underrated|powerful|valuable|impactful|artistic|divided)\b",
+    r"\bthe\s+(worst|best)\s+(way|form|type|kind|method|thing)\b",
+    # Inherent value judgment
+    r"\binherently\s+(cruel|wrong|unjust|unfair|harmful|dangerous|misguided|immoral|dishonest)\b",
+    # Normative claim
+    r"\bshould\s+be\s+(mandatory|optional|banned|illegal|required|encouraged)\b",
+    # Additional opinion patterns with no explicit "more X than" structure
+    r"\bleads?\s+to\s+a\s+(happier|healthier|longer|better)\b",
+    r"\bwould\s+make\s+(people|us|them|everyone)\b",
+    r"\bthe\s+(emptiest|loneliest|hardest|saddest|richest|purest)\s+form\b",
+    r"\bmore\s+important\s+for\b",
+    r"\bmore\s+division\s+than\b",
+    r"\bmore\s+meaningful\s+than\b",
+    # Comparative decline/improvement
+    r"\bmore\s+harm\s+than\s+good\b",
+    r"\bdoes\s+more\s+harm\b",
 ]
 
 PERSUASIVE_PATTERNS = [
@@ -78,6 +110,13 @@ FACTUAL_ANCHOR_PATTERNS = [
     r"\breport\b",
     r"\bdata\b",
     r"\b(is|are|was|were|has|have)\b.+\b(in|at|on|from)\b",
+    # Simple declarative factual claims without explicit anchors
+    r"\b(consists?\s+of|composed?\s+of|made\s+up\s+of)\b",
+    r"\b(continues?\s+to|never\s+spoils?|cannot\s+be|does\s+not|do\s+not)\b",
+    r"\b(the\s+)?(first|oldest|largest|smallest|fastest|slowest|longest|shortest|highest|deepest)\b",
+    r"\b(invented?|discovered?|created?|built?|founded?)\s+(by|in)\b",
+    r"\b(has\s+been|have\s+been|had\s+been)\s+(found|shown|proven|established|confirmed)\b",
+    r"\b(exist(?:s|ed)?|lived?|evolved?|orbit(?:s|ed)?|rota(?:tes?|ted))\b",
 ]
 
 HEDGE_WORDS = ["may", "might", "could", "possibly", "perhaps", "appears", "reportedly"]

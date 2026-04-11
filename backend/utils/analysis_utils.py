@@ -22,10 +22,18 @@ VERIFIED_SUPPORT_THRESHOLD = 0.60
 # Contradiction threshold kept strict so FALSE_FACT requires strong evidence.
 STRICT_CONTRADICTION_THRESHOLD = 0.72
 # Bias / manipulation verdict thresholds
-BIAS_VERDICT_THRESHOLD = 0.65
-MANIPULATION_VERDICT_THRESHOLD = 0.65
+# Lowered from 0.65 → 0.40 for bias: demonization/institutional-bad-faith patterns alone
+# reach ~0.35-0.45; setting 0.40 ensures strong single-hit bias signals are caught
+# without requiring the model to also report high bias.
+BIAS_VERDICT_THRESHOLD = 0.40
+# Manipulation threshold lowered from 0.65 → 0.48: with two FOMO/suppressed-info
+# signals (each weighted 0.25-0.38), the combined score reaches ~0.50-0.60.
+MANIPULATION_VERDICT_THRESHOLD = 0.48
 # AI-likelihood threshold — ONLY route LIKELY_AI_GENERATED above this level
-AI_VERDICT_THRESHOLD = 0.95
+# Lowered from 0.95 → 0.50: with the LLM+model blend (0.40 weight on model score),
+# clearly AI-generated corporate prose with raw_model_ai ≥ 0.70 and 2+ prose markers
+# typically reaches 0.50-0.70; 0.95 was unreachably strict in practice.
+AI_VERDICT_THRESHOLD = 0.50
 
 # ---------------------------------------------------------------------------
 # Mixed-claim guard constants
@@ -42,6 +50,12 @@ MIXED_SARCASM_MEDIUM_THRESHOLD = 0.35
 # MIXED_ANALYSIS is preferred over forcing a single-category verdict.
 MIXED_SIGNAL_COUNT_REQUIRED = 2
 
+# Model-only truth routing thresholds (used when external retrieval is inconclusive)
+# These allow VERIFIED_FACT / FALSE_FACT to be resolved from model score alone.
+# The model+LLM blend typically gives 0.75+ for well-known facts and 0.25- for
+# common misconceptions, so these thresholds are intentionally strict.
+MODEL_VERIFIED_THRESHOLD = 0.70   # model truth_score >= this → VERIFIED_FACT (no retrieval)
+MODEL_FALSE_THRESHOLD = 0.28      # model truth_score <= this → FALSE_FACT (no retrieval)
 
 def to_bucket(score: float) -> str:
     if score >= 0.70:
@@ -68,6 +82,8 @@ def stage_route_primary_verdict(
     # Optional extra signals for mixed-claim detection
     sarcasm_score: float = 0.0,
     opinion_score: float = 0.0,
+    # Model-only truth score — used to resolve VERIFIED_FACT / FALSE_FACT without retrieval
+    model_truth_score: float = 0.5,
 ) -> Dict[str, Any]:
     claim_type = claim_type or "MIXED"
     text_type_map = {
@@ -125,7 +141,36 @@ def stage_route_primary_verdict(
             "Subjective/preference language gated this away from factual truth scoring.",
         )
 
-    # Stage 3 — Verifiability gate (speculative / unverifiable content)
+    # Stage 3 — Early conspiracy / bias / manipulation gates
+    # These run BEFORE the factual routing block so that biased, manipulative, or
+    # conspiracy texts that happen to be phrased as factual assertions are classified
+    # correctly instead of falling through to UNVERIFIED_CLAIM.
+    if conspiracy_flag:
+        return _base(
+            "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+            "STAGE_3_CONSPIRACY_EARLY",
+            "non_factual_extraordinary",
+            False,
+            "Extraordinary/conspiracy markers detected — classified before factual routing.",
+        )
+    if bias_score >= BIAS_VERDICT_THRESHOLD:
+        return _base(
+            "BIASED_CONTENT",
+            "STAGE_3_BIAS_EARLY",
+            "non_factual_biased",
+            False,
+            f"Bias score {bias_score:.2f} ≥ threshold {BIAS_VERDICT_THRESHOLD} — classified before factual routing.",
+        )
+    if manipulation_score >= MANIPULATION_VERDICT_THRESHOLD:
+        return _base(
+            "MANIPULATIVE_CONTENT",
+            "STAGE_3_MANIPULATION_EARLY",
+            "non_factual_manipulative",
+            False,
+            f"Manipulation score {manipulation_score:.2f} ≥ threshold {MANIPULATION_VERDICT_THRESHOLD} — classified before factual routing.",
+        )
+
+    # Stage 4 — Verifiability gate (speculative / unverifiable content)
     if claim_type == "SPECULATIVE" or not claim_verifiable:
         return _base(
             "UNVERIFIED_CLAIM",
@@ -135,9 +180,9 @@ def stage_route_primary_verdict(
             "Speculative or unverifiable claim cannot be resolved factually.",
         )
 
-    # Stage 4 — Factual evaluation
+    # Stage 5 — Factual evaluation
     if factual_claim:
-        # Verified: support is good AND contradiction is comfortably below the strict threshold
+        # Verified via retrieval: support is good AND contradiction is comfortably below the strict threshold
         if (
             trust_agent_confidence == "support"
             and retrieval_support_score >= VERIFIED_SUPPORT_THRESHOLD
@@ -151,7 +196,7 @@ def stage_route_primary_verdict(
                 f"Support score {retrieval_support_score:.2f} ≥ threshold {VERIFIED_SUPPORT_THRESHOLD} with no strong contradiction.",
             )
 
-        # False: requires STRONG contradictory evidence — keep gate strict
+        # False via retrieval: requires STRONG contradictory evidence — keep gate strict
         if (
             trust_agent_confidence == "contradiction"
             and retrieval_contradiction_score >= STRICT_CONTRADICTION_THRESHOLD
@@ -164,7 +209,46 @@ def stage_route_primary_verdict(
                 f"Contradiction score {retrieval_contradiction_score:.2f} ≥ strict threshold {STRICT_CONTRADICTION_THRESHOLD}.",
             )
 
-        # Missing / inconclusive retrieval → UNVERIFIED, never FALSE
+        # Model-only VERIFIED_FACT: when retrieval is inconclusive but model confidence is high.
+        # Applies when no strong contradictory evidence exists and the LLM+model blend is confident.
+        if (
+            model_truth_score >= MODEL_VERIFIED_THRESHOLD
+            and retrieval_contradiction_score < STRICT_CONTRADICTION_THRESHOLD
+        ):
+            return _base(
+                "VERIFIED_FACT",
+                "STAGE_3_FACTUAL_MODEL_SUPPORT",
+                "verifiable_factual_claim",
+                True,
+                f"Model truth score {model_truth_score:.2f} ≥ {MODEL_VERIFIED_THRESHOLD} with no strong contradiction (retrieval inconclusive).",
+            )
+
+        # Model-only FALSE_FACT: strong model signal that claim is false, no retrieval support.
+        if (
+            model_truth_score <= MODEL_FALSE_THRESHOLD
+            and retrieval_support_score < VERIFIED_SUPPORT_THRESHOLD
+        ):
+            return _base(
+                "FALSE_FACT",
+                "STAGE_3_FACTUAL_MODEL_CONTRADICTION",
+                "verifiable_factual_claim",
+                True,
+                f"Model truth score {model_truth_score:.2f} ≤ {MODEL_FALSE_THRESHOLD} with no retrieval support (common misconception).",
+            )
+
+        # Missing / inconclusive retrieval AND model not confident → UNVERIFIED, never FALSE
+        # Exception: if AI likelihood is high and model is ambiguous, prefer LIKELY_AI_GENERATED
+        if (
+            ai_generated_score >= AI_VERDICT_THRESHOLD
+            and MODEL_FALSE_THRESHOLD < model_truth_score < MODEL_VERIFIED_THRESHOLD
+        ):
+            return _base(
+                "LIKELY_AI_GENERATED",
+                "STAGE_3_AI_IN_FACTUAL_BLOCK",
+                "non_factual_mixed",
+                False,
+                f"AI-likelihood {ai_generated_score:.2f} ≥ {AI_VERDICT_THRESHOLD} with ambiguous truth score — AI override in factual block.",
+            )
         return _base(
             "UNVERIFIED_CLAIM",
             "STAGE_3_FACTUAL_INCONCLUSIVE",
@@ -173,7 +257,36 @@ def stage_route_primary_verdict(
             "Factual claim did not reach support/contradiction thresholds — inconclusive retrieval.",
         )
 
-    # Stage 5 — Mixed-claim guard: multiple medium-to-high signals with no clear winner
+    # Stage 5b — Model-truth gate for verifiable non-factual claims (claim_type != FACTUAL_CLAIM)
+    # When claim is verifiable and the model+LLM blend is strongly confident in either direction,
+    # route to VERIFIED_FACT or FALSE_FACT even when the claim_type classifier returned MIXED.
+    # The conspiracy/bias/manipulation gates above have already filtered out non-neutral content,
+    # so we can safely assume remaining MIXED claims are neutral enough for truth verdicts.
+    if claim_verifiable and claim_type not in ("OPINION", "SPECULATIVE", "SARCASTIC"):
+        if (
+            model_truth_score >= MODEL_VERIFIED_THRESHOLD
+            and retrieval_contradiction_score < STRICT_CONTRADICTION_THRESHOLD
+        ):
+            return _base(
+                "VERIFIED_FACT",
+                "STAGE_5B_MODEL_VERIFIED_MIXED",
+                "verifiable_factual_claim",
+                True,
+                f"Model truth score {model_truth_score:.2f} ≥ {MODEL_VERIFIED_THRESHOLD} for verifiable mixed claim.",
+            )
+        if (
+            model_truth_score <= MODEL_FALSE_THRESHOLD
+            and retrieval_support_score < VERIFIED_SUPPORT_THRESHOLD
+        ):
+            return _base(
+                "FALSE_FACT",
+                "STAGE_5B_MODEL_FALSE_MIXED",
+                "verifiable_factual_claim",
+                True,
+                f"Model truth score {model_truth_score:.2f} ≤ {MODEL_FALSE_THRESHOLD} for verifiable mixed claim (common misconception).",
+            )
+
+    # Stage 6 — Mixed-claim guard: multiple medium-to-high signals with no clear winner
     # Prefer MIXED_ANALYSIS over forcing a single category on multi-clause / nuanced text.
     # Uses MIXED_SIGNAL_MEDIUM_THRESHOLD (0.40) as the "medium-strength" bar for each
     # dimension; sarcasm uses MIXED_SARCASM_MEDIUM_THRESHOLD (0.35) because the sarcasm
@@ -198,39 +311,14 @@ def stage_route_primary_verdict(
             f"Multiple medium-strength signals ({signal_count}) without a dominant category — prefer MIXED_ANALYSIS.",
         )
 
-    # Stage 6 — Secondary single-category overrides
-    if bias_score >= BIAS_VERDICT_THRESHOLD:
-        return _base(
-            "BIASED_CONTENT",
-            "STAGE_4_BIAS_OVERRIDE",
-            "non_factual_mixed",
-            False,
-            f"Bias score {bias_score:.2f} ≥ threshold {BIAS_VERDICT_THRESHOLD}.",
-        )
-    if manipulation_score >= MANIPULATION_VERDICT_THRESHOLD:
-        return _base(
-            "MANIPULATIVE_CONTENT",
-            "STAGE_4_MANIPULATION_OVERRIDE",
-            "non_factual_mixed",
-            False,
-            f"Manipulation score {manipulation_score:.2f} ≥ threshold {MANIPULATION_VERDICT_THRESHOLD}.",
-        )
-    if conspiracy_flag:
-        return _base(
-            "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
-            "STAGE_4_CONSPIRACY_OVERRIDE",
-            "non_factual_mixed",
-            False,
-            "Extraordinary/conspiracy markers dominated non-factual analysis.",
-        )
-    # AI verdict only at very high confidence — purely informational otherwise
+    # Stage 7 — AI verdict only at high confidence — purely informational otherwise
     if ai_generated_score >= AI_VERDICT_THRESHOLD:
         return _base(
             "LIKELY_AI_GENERATED",
             "STAGE_4_AI_AUXILIARY",
             "non_factual_mixed",
             False,
-            f"AI-likelihood {ai_generated_score:.2f} ≥ strict threshold {AI_VERDICT_THRESHOLD} — used only as secondary non-factual signal.",
+            f"AI-likelihood {ai_generated_score:.2f} ≥ threshold {AI_VERDICT_THRESHOLD}.",
         )
 
     return _base(
@@ -278,7 +366,7 @@ def aggregate_primary_verdict(
     if extraordinary_claim_flag:
         return "CONSPIRACY_OR_EXTRAORDINARY_CLAIM", "RULE_8_EXTRAORDINARY", "Extraordinary claim marker triggered."
     if ai_score >= AI_VERDICT_THRESHOLD and not factual_claim:
-        return "LIKELY_AI_GENERATED", "RULE_9_AI_AUXILIARY", f"Very high AI-likelihood ({ai_score:.2f}) on non-factual content."
+        return "LIKELY_AI_GENERATED", "RULE_9_AI_AUXILIARY", f"High AI-likelihood ({ai_score:.2f}) on non-factual content."
     return "MIXED_ANALYSIS", "RULE_10_MIXED", "No single dominant rule exceeded decision thresholds."
 
 
