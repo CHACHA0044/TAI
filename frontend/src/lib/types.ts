@@ -5,12 +5,21 @@ export interface AnalysisResult {
   bias_score: number;
   credibility_score: number;
   confidence_score: number;
+  primary_verdict?: PrimaryVerdict;
+  confidence?: number;
+  dimensions?: Dimensions;
+  expanded_analysis?: ExpandedAnalysis;
+  triggered_rule?: string;
+  manipulation_score?: number;
+  conspiracy_flag?: boolean;
+  sarcasm?: boolean;
   features: {
     perplexity: number;
     stylometry: {
       sentence_length_variance: number;
       repetition_score: number;
       lexical_diversity: number;
+      burstiness?: number;
     };
   };
   signals: {
@@ -29,13 +38,50 @@ export interface AnalysisResult {
     model: string;
     latency_ms: number;
     timestamp: string;
-    raw_metadata?: Record<string, any>;
+    raw_metadata?: Record<string, unknown>;
   };
   // Extended forensics fields
   audio_score?: number;
   news_consistency_score?: number;
   ocr_text?: string;
   frame_scores?: number[];
+}
+
+export type PrimaryVerdict =
+  | "VERIFIED_FACT"
+  | "FALSE_FACT"
+  | "UNVERIFIED_CLAIM"
+  | "OPINION"
+  | "BIASED_CONTENT"
+  | "MANIPULATIVE_CONTENT"
+  | "SATIRE_OR_SARCASM"
+  | "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"
+  | "LIKELY_AI_GENERATED"
+  | "MIXED_ANALYSIS";
+
+export interface Dimensions {
+  truth_score: number;
+  ai_likelihood: number;
+  bias_score: number;
+  manipulation_score: number;
+  sarcasm: boolean;
+  conspiracy_flag: boolean;
+}
+
+export interface ExpandedAnalysis {
+  truth_score?: {
+    explanation?: string;
+    evidence?: string;
+    sources?: string[];
+  };
+  ai_likelihood?: {
+    explanation?: string;
+    indicators?: string[];
+  };
+  bias_score?: {
+    explanation?: string;
+    indicators?: string[];
+  };
 }
 
 export type DetectionMode = "text" | "image" | "video";
