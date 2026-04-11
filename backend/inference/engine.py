@@ -55,7 +55,7 @@ class MockModel(torch.nn.Module):
 
     def forward(self, **kwargs):
         return {
-            "truth": torch.tensor([0.72]),
+            "truth": torch.tensor([0.5]),  # Neutral/Uncertain by default
             "ai": torch.tensor([[0.15, 0.85]]),
             "bias": torch.tensor([[0.2, 0.6, 0.2]])
         }
@@ -292,7 +292,16 @@ class InferenceEngine:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
         # 5. Fusion & self-check
+        # If external verification found no matches, we should be skeptical of the claim
         final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
+        
+        # Heuristic: If we have zero relevant signals and a low news consistency, 
+        # it's likely unsubstantiated/obviously false if it was presented as a fact.
+        if not verification_signals or all(s.get("match_score", 0) < 0.3 for s in verification_signals):
+             if news_consistency_score and news_consistency_score < 0.4:
+                 final_truth_score *= 0.5  # Heavy penalty for "obviously false/unsubstantiated" content
+                 logger.info("Content labeled as highly suspicious (zero news support)")
+
         if ai_generated_score > 0.8 and avg_external_cred < 0.6:
             final_truth_score = self._sanitize(final_truth_score * 0.9)
 
@@ -305,11 +314,17 @@ class InferenceEngine:
         # Transform verification signals → frontend "signals" format
         signals = []
         for vs in verification_signals:
+            # Filter: Don't show the signal unless it's actually relevant to the claim
+            if vs.get("match_score", 0) < 0.45:
+                continue
             signals.append({
                 "source": vs.get("top_match", vs.get("claim", "Unknown source")),
                 "verified": vs.get("agent_credibility", 0.5) > 0.6,
                 "confidence": round(vs.get("agent_credibility", 0.5), 2),
             })
+
+        # Only expose news_consistency_score if it's statistically significant (>0.35)
+        is_news_relevant = news_consistency_score is not None and news_consistency_score > 0.35
 
         return {
             "truth_score": round(final_truth_score, 2),
@@ -329,7 +344,7 @@ class InferenceEngine:
                 },
             },
             "signals": signals,
-            **({"news_consistency_score": round(news_consistency_score, 2)} if news_consistency_score is not None else {}),
+            **({"news_consistency_score": round(news_consistency_score, 2)} if is_news_relevant else {}),
             "metadata": {
                 "model": "roberta-finetuned + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
