@@ -226,20 +226,20 @@ async def analyze_text(request: AnalysisRequest):
 
 @app.post("/analyze-url", response_model=AnalysisResponse)
 async def analyze_url(request: AnalysisRequest):
-    content = resolve_content(request)
-    logger.info(f"POST /analyze-url — input: {content[:80]}...")
+    original_url = resolve_content(request)
+    logger.info(f"POST /analyze-url — input: {original_url[:80]}...")
 
     try:
         engine = get_engine()
-        result = engine.analyze(content)
+        result = engine.analyze(original_url)
         if not result:
             raise HTTPException(
                 status_code=400,
                 detail="Could not extract content from URL. Please paste text manually.",
             )
         # Surface the original URL so the frontend can display it
-        if content.startswith("http://") or content.startswith("https://"):
-            result["source"] = content
+        if original_url.startswith("http://") or original_url.startswith("https://"):
+            result["source"] = original_url
         return result
     except HTTPException:
         raise
