@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import "animate.css";
+import "tippy.js/dist/tippy.css";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
-
-const inter = Inter({
-  variable: "--font-sans",
-  subsets: ["latin"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -36,7 +31,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} dark`} suppressHydrationWarning>
+    <html lang="en" className="dark font-sans" suppressHydrationWarning>
+      <head>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap" />
+      </head>
       <body className="min-h-screen bg-[#080818] text-white antialiased overflow-x-hidden">
         <Navbar />
         <main>{children}</main>

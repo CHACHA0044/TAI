@@ -10,6 +10,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { ShieldAlert, Play } from "lucide-react";
 import { SectionWrapper } from "./section-wrapper";
+import { Button } from "./ui/button";
 
 export function HeroSection() {
   const prefersReducedMotion = useReducedMotion();
@@ -53,22 +54,13 @@ export function HeroSection() {
           Analyze text, images, and videos using state-of-the-art AI.
         </p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full px-4 sm:px-0">
-          <Link
-            href="/text"
-            className="group relative w-full sm:w-auto px-8 min-h-[56px] rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold text-lg hover:shadow-[0_0_40px_rgba(16,185,129,0.3)] transition-all duration-300 flex items-center justify-center gap-3 overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080818]"
-          >
-            <div className="absolute inset-0 bg-white/20 group-hover:translate-x-full transition-transform duration-500 -translate-x-full skew-x-12" />
-            <ShieldAlert className="w-5 h-5 relative z-10" />
-            <span className="relative z-10">Explore System</span>
-          </Link>
-          <Link
-            href="#how-it-works"
-            className="w-full sm:w-auto px-8 min-h-[56px] rounded-2xl glass-strong text-white font-semibold text-lg hover:bg-white/10 transition-all flex items-center justify-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#080818]"
-          >
-            <Play className="w-5 h-5 text-emerald-400/80" />
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full px-4 sm:px-0 mt-4">
+          <Button variant="primary" onClick={() => window.location.href = '/text'}>
+            Explore System
+          </Button>
+          <Button variant="secondary" onClick={() => window.location.href = '#how-it-works'}>
             How it works
-          </Link>
+          </Button>
         </div>
       </SectionWrapper>
     </div>

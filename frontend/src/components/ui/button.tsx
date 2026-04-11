@@ -1,58 +1,183 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva, type VariantProps } from "class-variance-authority"
+"use client";
 
-import { cn } from "@/lib/utils"
+import React, { useRef, useEffect, MouseEvent } from "react";
+import gsap from "gsap";
+import Tippy from "@tippyjs/react";
+import "animate.css";
+import "../../styles/buttons.css";
 
-const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-  {
-    variants: {
-      variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
-        ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
-        destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "icon" | "danger" | "loading";
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
-  return (
-    <ButtonPrimitive
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: ButtonVariant;
+  tooltip?: string;
+  isActive?: boolean;
 }
 
-export { Button, buttonVariants }
+export function Button({
+  variant = "secondary",
+  tooltip,
+  isActive,
+  children,
+  className = "",
+  onClick,
+  onMouseEnter,
+  onMouseLeave,
+  ...props
+}: ButtonProps) {
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const iconRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (btnRef.current) {
+      iconRef.current = btnRef.current.querySelector('svg');
+    }
+  }, [children]);
+
+  const handleMouseMove = (e: MouseEvent<HTMLButtonElement>) => {
+    if (variant !== "primary" || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const btn = btnRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    gsap.to(btn, { x: x * 0.15, y: y * 0.15, duration: 0.3, ease: "power2.out" });
+  };
+
+  const handleMouseLeave = (e: MouseEvent<HTMLButtonElement>) => {
+    const btn = btnRef.current;
+    if (!btn) return;
+    if (variant === "primary" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      gsap.to(btn, { x: 0, y: 0, duration: 0.5, ease: "elastic.out(1, 0.5)" });
+    }
+    
+    onMouseLeave?.(e);
+  };
+
+  const handleMouseEnter = (e: MouseEvent<HTMLButtonElement>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        onMouseEnter?.(e);
+        return;
+    }
+
+    if (variant === "primary" && iconRef.current) {
+      gsap.to(iconRef.current, { rotation: "+=360", duration: 0.6, ease: "power2.out" });
+    }
+    
+    if (variant === "icon" && iconRef.current) {
+      gsap.fromTo(iconRef.current, { scale: 1 }, { scale: 1.2, duration: 0.4, ease: "bounce.out", yoyo: true, repeat: 1 });
+    }
+    
+    if (variant === "danger" && btnRef.current) {
+      btnRef.current.classList.add("animate__animated", "animate__shakeX");
+      setTimeout(() => {
+        btnRef.current?.classList.remove("animate__animated", "animate__shakeX");
+      }, 1000);
+    }
+    
+    onMouseEnter?.(e);
+  };
+
+  const handleClick = (e: MouseEvent<HTMLButtonElement>) => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        onClick?.(e);
+        return;
+    }
+
+    if (variant === "primary") {
+      const btn = btnRef.current;
+      if (btn) {
+        const ripple = document.createElement("span");
+        const rect = btn.getBoundingClientRect();
+        ripple.className = "tg-ripple";
+        
+        // ensure ripple starts small and centered on click
+        ripple.style.width = `20px`;
+        ripple.style.height = `20px`;
+        ripple.style.left = `${e.clientX - rect.left - 10}px`;
+        ripple.style.top = `${e.clientY - rect.top - 10}px`;
+        
+        btn.appendChild(ripple);
+        gsap.to(ripple, { 
+          scale: 15, 
+          opacity: 0, 
+          duration: 0.6,
+          ease: "power2.out", 
+          onComplete: () => ripple.remove() 
+        });
+      }
+    }
+    
+    if (variant === "icon" && iconRef.current) {
+      gsap.to(iconRef.current, { rotation: "+=360", duration: 0.5, ease: "power2.out" });
+    }
+
+    onClick?.(e);
+  };
+
+  useEffect(() => {
+    if (variant === "loading" && btnRef.current && !window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+       const btn = btnRef.current;
+       let scanline = btn.querySelector('.tg-scanline');
+       if (!scanline) {
+         scanline = document.createElement('div');
+         scanline.className = 'tg-scanline';
+         btn.appendChild(scanline);
+       }
+       
+       const tl = gsap.timeline({ repeat: -1 });
+       tl.fromTo(scanline, { left: "-20%" }, { left: "120%", duration: 1.5, ease: "power1.inOut" });
+       
+       return () => { tl.kill(); scanline?.remove(); };
+    }
+  }, [variant]);
+
+  const baseClasses = "tg-btn-base relative items-center justify-center";
+  let variantClasses = "";
+  
+  switch (variant) {
+    case "primary": variantClasses = "tg-btn-primary"; break;
+    case "secondary": variantClasses = "tg-btn-secondary focus:animate__animated focus:animate__pulse"; break;
+    case "ghost": variantClasses = `tg-btn-ghost ${isActive ? "tg-btn-ghost-active text-white" : ""}`; break;
+    case "icon": variantClasses = "tg-btn-icon"; break;
+    case "danger": variantClasses = "tg-btn-danger"; break;
+    case "loading": variantClasses = "tg-btn-loading"; break;
+    default: variantClasses = "tg-btn-secondary";
+  }
+
+  const buttonContent = (
+    <button
+      ref={btnRef}
+      className={`${baseClasses} ${variantClasses} ${className}`}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      onMouseEnter={handleMouseEnter}
+      onClick={handleClick}
+      disabled={variant === "loading" || props.disabled}
+      {...props}
+    >
+      {variant === "loading" ? (
+         <>
+           <span className="relative z-10 flex items-center gap-2">
+             Analyzing
+             <span className="flex gap-0.5">
+               <span className="animate-bounce delay-75">.</span>
+               <span className="animate-bounce delay-150">.</span>
+               <span className="animate-bounce delay-300">.</span>
+             </span>
+           </span>
+         </>
+      ) : children}
+    </button>
+  );
+
+  if (tooltip) {
+    return (
+      <Tippy content={tooltip} animation="shift-away" theme="translucent" placement="top">
+        <div className="inline-block">{buttonContent}</div>
+      </Tippy>
+    );
+  }
+
+  return buttonContent;
+}
