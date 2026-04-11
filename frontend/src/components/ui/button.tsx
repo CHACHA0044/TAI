@@ -26,7 +26,7 @@ export function Button({
   ...props
 }: ButtonProps) {
   const btnRef = useRef<HTMLButtonElement>(null);
-  const iconRef = useRef<HTMLElement | null>(null);
+  const iconRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
     if (btnRef.current) {

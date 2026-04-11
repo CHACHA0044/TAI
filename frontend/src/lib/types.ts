@@ -24,6 +24,14 @@ export interface AnalysisResult {
     why_verdict_chosen?: string;
     final_rule_triggered?: string;
     raw_intermediate_scores?: Record<string, unknown>;
+    // Calibration-visibility fields
+    threshold_values_used?: Record<string, number>;
+    detector_confidences?: Record<string, number>;
+    trust_support_margin?: number;
+    contradiction_margin?: number;
+    sarcasm_rule_hits?: string[];
+    bias_rule_hits?: string[];
+    manipulation_rule_hits?: string[];
   };
   manipulation_score?: number;
   conspiracy_flag?: boolean;

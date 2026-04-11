@@ -143,8 +143,13 @@ class BenchmarkRunner:
         actual_truth = normalize_score(actual.get("truth_score", 0))
         actual_ai = normalize_score(actual.get("ai_generated_score", 0))
         actual_bias = normalize_score(actual.get("bias_score", 0))
-        # Use bias as proxy for manipulation if not available
-        actual_manipulation = normalize_score(actual.get("bias_score", 0)) 
+        # Use actual manipulation_score from dimensions if available; fall back to bias as proxy
+        dims = actual.get("dimensions") or {}
+        manip_raw = dims.get("manipulation_score")
+        if manip_raw is not None:
+            actual_manipulation = normalize_score(manip_raw)  # dimensions are 0-100
+        else:
+            actual_manipulation = normalize_score(actual.get("manipulation_score", actual.get("bias_score", 0)))
 
         # Matches
         verdict_match = actual_verdict == expected["primary_verdict"]

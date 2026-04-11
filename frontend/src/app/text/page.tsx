@@ -33,12 +33,13 @@ export default function TextDetectionPage() {
         res = await analyzeText(input);
       }
       setResult(res);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       if (mode === "url") {
         setError("Unable to extract content. Please paste text manually.");
       } else {
-        setError(err.message || "Analysis failed. Please try again.");
+        const msg = err instanceof Error ? err.message : "Analysis failed. Please try again.";
+        setError(msg);
       }
     } finally {
       setLoading(false);
@@ -65,8 +66,8 @@ export default function TextDetectionPage() {
             animate={{ y: 0, opacity: 1 }}
             className="text-4xl sm:text-5xl md:text-6xl font-black mb-4 sm:mb-6 tracking-tight flex flex-col sm:block"
           >
-            <span>Truth<span className="text-emerald-400">Guard</span></span>
-            <span className="ml-0 sm:ml-3">Engine</span>
+            <span>AI-Powered <span className="text-emerald-400">Fact</span></span>
+            <span className="ml-0 sm:ml-3">Verification</span>
           </motion.h1>
           <motion.p 
             initial={prefersReducedMotion ? { opacity: 1 } : { y: 20, opacity: 0 }}
@@ -74,8 +75,7 @@ export default function TextDetectionPage() {
             transition={{ delay: prefersReducedMotion ? 0 : 0.1 }}
             className="text-white/50 text-base sm:text-lg md:text-xl max-w-2xl mx-auto font-medium px-2"
           >
-            Multi-modal verification for the modern information landscape. 
-            Detect AI, verify claims, and uncover bias in seconds.
+            Paste any claim, article, or URL. TruthGuard analyses it for factual accuracy, bias, manipulation, sarcasm, and AI generation — in seconds.
           </motion.p>
         </div>
 
@@ -87,8 +87,20 @@ export default function TextDetectionPage() {
               animate={{ opacity: 1, x: 0 }}
               className="glass rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-8 border border-white/10 shadow-2xl relative"
             >
+              {/* Panel heading */}
+              <div className="mb-5 sm:mb-6">
+                <h2 className="text-base sm:text-lg font-black text-white/80 tracking-tight">
+                  What would you like to verify?
+                </h2>
+                <p className="text-[11px] sm:text-xs text-white/30 mt-1 font-medium">
+                  Enter a claim, paste an article, or drop a URL — we&apos;ll do the rest.
+                </p>
+              </div>
+
               {/* Mode Toggle */}
-              <div className="flex bg-white/5 rounded-2xl p-1.5 mb-6 sm:mb-8 border border-white/5">
+              <div className="mb-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/30 mb-2">Input type</p>
+                <div className="flex bg-white/5 rounded-2xl p-1.5 border border-white/5">
                 <button 
                   onClick={() => { setMode("text"); setInput(""); setError(null); }}
                   className={`flex-1 flex items-center justify-center gap-2 py-3 text-sm font-black rounded-xl transition-all min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
@@ -106,14 +118,19 @@ export default function TextDetectionPage() {
                   <LinkIcon className="w-4 h-4" /> URL
                 </button>
               </div>
+              </div>
 
               {/* Input Field */}
-              <div className="relative">
+              <div className="mt-5 sm:mt-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.18em] text-white/30 mb-2">
+                  {mode === "text" ? "Your text or claim" : "Article URL to verify"}
+                </p>
+                <div className="relative">
                 {mode === "text" ? (
                   <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Enter article text or claim to verify..."
+                    placeholder="Paste a claim, headline, or full article here to analyse…"
                     className="w-full h-48 sm:h-64 bg-black/40 border border-white/10 rounded-2xl p-4 sm:p-6 text-white placeholder:text-white/20 resize-none outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-all font-medium text-base sm:text-lg leading-relaxed shadow-inner"
                   />
                 ) : (
@@ -122,7 +139,7 @@ export default function TextDetectionPage() {
                       type="url"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="https://example.com/article"
+                      placeholder="https://example.com/article-to-verify"
                       className="w-full h-14 sm:h-auto bg-black/40 border border-white/10 rounded-2xl p-4 sm:p-6 text-white placeholder:text-white/20 outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/50 transition-all font-medium text-base sm:text-lg shadow-inner"
                     />
                   </div>
@@ -135,6 +152,7 @@ export default function TextDetectionPage() {
                     </span>
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Error Message */}
@@ -165,7 +183,7 @@ export default function TextDetectionPage() {
                   </>
                 ) : (
                   <>
-                    <span className="whitespace-nowrap">INVOKE GUARDIAN</span>
+                    <span className="whitespace-nowrap">ANALYSE CONTENT</span>
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
                   </>
                 )}
