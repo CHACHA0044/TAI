@@ -3,6 +3,7 @@ import torch
 import numpy as np
 import os
 import time
+import re
 import logging
 from datetime import datetime, timezone
 from utils.analysis_utils import get_verdict_and_risk
@@ -30,6 +31,13 @@ except Exception:
 
 from services.trust_agents import TrustAgent
 from services.news_search_agent import NewsSearchAgent
+from services.sarcasm_detector import SarcasmDetector
+from services.verifiability import assess_claim_verifiability
+from services.adapters import (
+    HuggingFaceBiasClassifierAdapter,
+    ExternalFactCheckAdapter,
+    SearchVerificationPipelineAdapter,
+)
 from utils.url_extractor import extract_content, get_claims
 
 try:
@@ -143,6 +151,11 @@ class InferenceEngine:
         except Exception as e:
             logger.warning(f"NewsSearchAgent failed: {e}")
             self.news_agent = None
+
+        self.sarcasm_detector = SarcasmDetector()
+        self.bias_adapter = HuggingFaceBiasClassifierAdapter()
+        self.factcheck_adapter = ExternalFactCheckAdapter()
+        self.search_verification_adapter = SearchVerificationPipelineAdapter()
 
     def _load_model(self, model_path):
         """Load multi-task RoBERTa or fall back to MockModel."""
@@ -281,6 +294,89 @@ Return your response as valid JSON ONLY:
             return default
         return max(0.0, min(1.0, value))
 
+    @staticmethod
+    def _safe_ratio(numerator: float, denominator: float, default: float = 0.0) -> float:
+        if denominator == 0:
+            return default
+        return numerator / denominator
+
+    def _sentence_lengths(self, text: str):
+        chunks = [s.strip() for s in re.split(r"[.!?]+", text or "") if s.strip()]
+        return [len(c.split()) for c in chunks if c]
+
+    def _compute_style_metrics(self, text: str, raw_features: dict) -> dict:
+        sentence_lengths = self._sentence_lengths(text)
+        mean_len = float(np.mean(sentence_lengths)) if sentence_lengths else 0.0
+        std_len = float(np.std(sentence_lengths)) if len(sentence_lengths) > 1 else 0.0
+        cv = self._safe_ratio(std_len, mean_len, default=0.0)
+        burstiness = self._sanitize(min(1.0, cv / 1.2), default=0.3)
+        sentence_variance = float(raw_features.get("sent_len_var", std_len**2))
+        sentence_uniformity = self._sanitize(1.0 - min(1.0, sentence_variance / 60.0))
+        lexical_diversity = self._sanitize(float(raw_features.get("lexical_diversity", 0.5)))
+        lexical_repetition = self._sanitize(float(raw_features.get("repetition_score", 0.0)))
+        stylometric_consistency = self._sanitize((0.55 * sentence_uniformity) + (0.45 * (1.0 - lexical_diversity)))
+        return {
+            "burstiness": round(burstiness, 4),
+            "sentence_length_uniformity": round(sentence_uniformity, 4),
+            "lexical_repetition": round(lexical_repetition, 4),
+            "stylometric_consistency": round(stylometric_consistency, 4),
+            "sentence_variance": round(sentence_variance, 4),
+            "lexical_diversity": round(lexical_diversity, 4),
+            "mean_sentence_length": round(mean_len, 4),
+        }
+
+    def _compute_ai_likelihood(self, raw_model_ai: float, raw_features: dict, style_metrics: dict) -> float:
+        """
+        AI-likelihood blend designed to reduce false positives on formal writing.
+        No literal keyword triggers are used.
+        """
+        perplexity = float(raw_features.get("perplexity", 45.0))
+        # Lower perplexity can indicate machine-generated text, but use reduced weight.
+        ppl_component = self._sanitize((55.0 - min(perplexity, 120.0)) / 55.0, default=0.5)
+        repetition_component = self._sanitize(style_metrics.get("lexical_repetition", 0.0))
+        uniformity_component = self._sanitize(style_metrics.get("sentence_length_uniformity", 0.5))
+        consistency_component = self._sanitize(style_metrics.get("stylometric_consistency", 0.5))
+        low_burstiness_component = self._sanitize(1.0 - style_metrics.get("burstiness", 0.3))
+
+        blended = (
+            0.20 * ppl_component
+            + 0.18 * uniformity_component
+            + 0.18 * repetition_component
+            + 0.20 * consistency_component
+            + 0.12 * low_burstiness_component
+            + 0.12 * self._sanitize(raw_model_ai)
+        )
+        return self._sanitize(blended)
+
+    @staticmethod
+    def _detect_conspiracy(content: str) -> bool:
+        markers = [
+            "new world order",
+            "cover-up",
+            "they don't want you to know",
+            "secret cabal",
+            "hidden truth",
+            "stolen election",
+        ]
+        text = (content or "").lower()
+        return any(marker in text for marker in markers)
+
+    @staticmethod
+    def _compute_manipulation_score(bias_score: float, style_metrics: dict, content: str) -> float:
+        emotional_terms = [
+            "shocking", "outrageous", "disaster", "evil", "wake up", "exposed", "must share", "urgent",
+        ]
+        text = (content or "").lower()
+        emotional_hits = sum(1 for term in emotional_terms if term in text)
+        emotional_component = min(1.0, emotional_hits / 6.0)
+        score = (
+            0.45 * bias_score
+            + 0.20 * style_metrics.get("lexical_repetition", 0.0)
+            + 0.15 * style_metrics.get("sentence_length_uniformity", 0.0)
+            + 0.20 * emotional_component
+        )
+        return max(0.0, min(1.0, score))
+
     # ------------------------------------------------------------------
     # Main analysis pipeline
     # ------------------------------------------------------------------
@@ -302,7 +398,8 @@ Return your response as valid JSON ONLY:
 
         truth_score = self._sanitize(float(outputs["truth"].cpu().item()))
         ai_probs = torch.softmax(outputs["ai"], dim=1).cpu().numpy()[0]
-        ai_generated_score = self._sanitize(float(ai_probs[1]))
+        raw_model_ai_score = self._sanitize(float(ai_probs[1]))
+        ai_generated_score = raw_model_ai_score
         bias_probs = torch.softmax(outputs["bias"], dim=1).cpu().numpy()[0]
         bias_score = self._sanitize(float(np.argmax(bias_probs) / 2.0))
 
@@ -332,7 +429,7 @@ Return your response as valid JSON ONLY:
                 if bias_val > 1.0: bias_val /= 100.0
 
             truth_score = (truth_score * 0.2) + (ts_val * 0.8)
-            ai_generated_score = (ai_generated_score * 0.2) + (ai_val * 0.8)
+            raw_model_ai_score = (raw_model_ai_score * 0.7) + (ai_val * 0.3)
             bias_score = (bias_score * 0.2) + (bias_val * 0.8)
             
             if "ai_reasoning" in oa_res:
@@ -343,6 +440,8 @@ Return your response as valid JSON ONLY:
         # 3. Feature extraction (perplexity + stylometry)
         logger.info("Extracting features...")
         raw_features = self.feature_extractor.extract_all(content)
+        style_metrics = self._compute_style_metrics(content, raw_features)
+        ai_generated_score = self._compute_ai_likelihood(raw_model_ai_score, raw_features, style_metrics)
 
         # 4. External verification
         logger.info("Running external verification...")
@@ -366,6 +465,11 @@ Return your response as valid JSON ONLY:
                 logger.info(f"News consistency score: {news_consistency_score:.2f}")
             except Exception as exc:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
+
+        sarcasm_signal = self.sarcasm_detector.detect(content)
+        verifiability = assess_claim_verifiability(content)
+        conspiracy_flag = self._detect_conspiracy(content)
+        manipulation_score = self._compute_manipulation_score(bias_score, style_metrics, content)
 
         # 5. Fusion & self-check (STRICTLY INDEPENDENT)
         # When no external signals are available, we default to the model truth score.
@@ -393,6 +497,11 @@ Return your response as valid JSON ONLY:
         # 5.5 Enriched analysis (Verdict, Risk, etc)
         enriched = get_verdict_and_risk(
             final_truth_score, ai_generated_score, bias_score, confidence
+            , manipulation_score=manipulation_score,
+            sarcasm_detected=bool(sarcasm_signal.get("sarcasm", False)),
+            conspiracy_flag=conspiracy_flag,
+            claim_verifiable=bool(verifiability.get("claim_verifiable", True)),
+            opinion_detected=bool(verifiability.get("opinion_detected", False)),
         )
 
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -409,6 +518,32 @@ Return your response as valid JSON ONLY:
                 "verified": vs.get("agent_credibility", 0.5) > 0.6,
                 "confidence": round(vs.get("agent_credibility", 0.5), 2),
             })
+
+        truth_sources = [
+            s["source"]
+            for s in signals
+        ]
+
+        raw_classifier_outputs = {
+            "truth_model_raw": round(truth_score, 4),
+            "ai_model_raw": round(raw_model_ai_score, 4),
+            "ai_likelihood_blended": round(ai_generated_score, 4),
+            "bias_model_raw": round(bias_score, 4),
+            "external_credibility_mean": round(avg_external_cred, 4),
+            "sarcasm_score": round(float(sarcasm_signal.get("score", 0.0)), 4),
+            "claim_verifiable": bool(verifiability.get("claim_verifiable", True)),
+            "opinion_detected": bool(verifiability.get("opinion_detected", False)),
+            "verifiability_reason": verifiability.get("reason", "unknown"),
+        }
+
+        dimensions = {
+            "truth_score": int(round(final_truth_score * 100)),
+            "ai_likelihood": int(round(ai_generated_score * 100)),
+            "bias_score": int(round(bias_score * 100)),
+            "manipulation_score": int(round(manipulation_score * 100)),
+            "sarcasm": bool(sarcasm_signal.get("sarcasm", False)),
+            "conspiracy_flag": conspiracy_flag,
+        }
 
         # Only expose news_consistency_score if it's statistically significant (>0.35)
         is_news_relevant = news_consistency_score is not None and news_consistency_score > 0.35
@@ -433,6 +568,34 @@ Return your response as valid JSON ONLY:
                     "sentence_length_variance": round(raw_features.get("sent_len_var", 0), 2),
                     "repetition_score": round(raw_features.get("repetition_score", 0), 4),
                     "lexical_diversity": round(raw_features.get("lexical_diversity", 0), 4),
+                    "burstiness": round(style_metrics.get("burstiness", 0), 4),
+                },
+            },
+            "primary_verdict": enriched.get("primary_verdict", "MIXED_ANALYSIS"),
+            "confidence": int(round(confidence * 100)),
+            "dimensions": dimensions,
+            "expanded_analysis": {
+                "truth_score": {
+                    "explanation": "Cross-referenced against model inference and external verification signals.",
+                    "evidence": self._truth_reasoning or "Weighted blend of model truth score and external credibility.",
+                    "sources": truth_sources,
+                },
+                "ai_likelihood": {
+                    "explanation": "Derived from perplexity, burstiness, sentence-length uniformity, lexical repetition, and stylometric consistency.",
+                    "indicators": [
+                        f"perplexity={round(raw_features.get('perplexity', 0), 2)}",
+                        f"burstiness={style_metrics.get('burstiness', 0)}",
+                        f"sentence_uniformity={style_metrics.get('sentence_length_uniformity', 0)}",
+                        f"lexical_repetition={style_metrics.get('lexical_repetition', 0)}",
+                        f"stylometric_consistency={style_metrics.get('stylometric_consistency', 0)}",
+                    ],
+                },
+                "bias_score": {
+                    "explanation": "Estimated from framing skew and language style cues.",
+                    "indicators": [
+                        f"bias_model={round(bias_score, 4)}",
+                        f"manipulation_score={round(manipulation_score, 4)}",
+                    ],
                 },
             },
             "signals": signals,
@@ -442,6 +605,16 @@ Return your response as valid JSON ONLY:
                 "model": "roberta-finetuned + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
+                "raw_metadata": {
+                    "aggregation_rule": enriched.get("triggered_rule", "RULE_9_MIXED"),
+                    "raw_classifier_outputs": raw_classifier_outputs,
+                    "feature_metrics": {
+                        "perplexity": round(raw_features.get("perplexity", 0), 4),
+                        "burstiness": style_metrics.get("burstiness", 0),
+                        "lexical_diversity": style_metrics.get("lexical_diversity", 0),
+                        "sentence_variance": style_metrics.get("sentence_variance", 0),
+                    },
+                },
             },
         }
 
