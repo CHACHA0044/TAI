@@ -302,20 +302,19 @@ class VideoEngine:
     # ------------------------------------------------------------------
 
     def _lazy_load_blip(self):
-        if self.blip_model is None:
-            logger.info("Loading BLIP semantic model (approx 900MB)...")
+        if self.transformers_available:
             try:
-                self.blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-                self.blip_model     = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-                
-                # Move to CPU explicitly and use float32 for maximum compatibility on 8GB machines
-                self.blip_model.to("cpu")
-                self.blip_model.eval()
-                logger.info("BLIP semantic model loaded successfully.")
+                logger.info("Loading Video Description Model (BLIP) in FP16...")
+                self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+                self.desc_model = BlipForConditionalGeneration.from_pretrained(
+                    "Salesforce/blip-image-captioning-base",
+                    torch_dtype=torch.float16
+                ).to(self.device)
+                logger.info("Video description model loaded successfully.")
             except Exception as e:
-                logger.error(f"Failed to load BLIP model: {e}")
-                return False
-        return True
+                logger.warning(f"Failed to load video description model: {e}")
+                self.transformers_available = False
+        return self.transformers_available
 
     def _describe_scenes(self, frames: List[Image.Image]) -> Tuple[str, List[str]]:
         """Generate a summarized scene description using BLIP."""
@@ -331,9 +330,11 @@ class VideoEngine:
             with torch.no_grad():
                 for idx in indices:
                     img = frames[idx]
-                    inputs = self.blip_processor(img, return_tensors="pt")
-                    out = self.blip_model.generate(**inputs)
-                    cap = self.blip_processor.decode(out[0], skip_special_tokens=True)
+                    inputs = self.processor(img, return_tensors="pt").to(self.device)
+                    # Cast inputs to float16
+                    inputs = {k: v.to(torch.float16) if v.is_floating_point() else v for k, v in inputs.items()}
+                    out = self.desc_model.generate(**inputs)
+                    cap = self.processor.decode(out[0], skip_special_tokens=True)
                     if cap and cap not in captions:
                         captions.append(cap.capitalize())
 
