@@ -1,5 +1,7 @@
 import logging
 import os
+import tempfile
+import uuid as _uuid
 
 # Hugging Face cache - prefer environment variable, default to /app cache
 if "HF_HOME" not in os.environ:
@@ -287,10 +289,8 @@ async def analyze_video(file: UploadFile = File(...)):
 
         # 2. Save upload to a temp file and queue only its path — never broker raw bytes.
         #    This avoids JSON-serialisation failures and huge Redis memory usage.
-        import tempfile, uuid as _uuid
-        tmp_dir = tempfile.gettempdir()
         ext = os.path.splitext(file.filename or "upload.mp4")[1] or ".mp4"
-        tmp_path = os.path.join(tmp_dir, f"tg_upload_{_uuid.uuid4().hex}{ext}")
+        tmp_path = os.path.join(tempfile.gettempdir(), f"tg_upload_{_uuid.uuid4().hex}{ext}")
         with open(tmp_path, "wb") as fh:
             fh.write(contents)
         logger.info(f"Upload saved to temp path: {tmp_path}")

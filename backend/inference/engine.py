@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 import os
@@ -222,7 +223,6 @@ class InferenceEngine:
     @staticmethod
     def _sanitize(value: float, default: float = 0.5) -> float:
         """Clamp a score to [0, 1] and replace NaN/inf with a safe default."""
-        import math
         if not math.isfinite(value):
             return default
         return max(0.0, min(1.0, value))
