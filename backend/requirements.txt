@@ -23,3 +23,5 @@ redis
 pytesseract
 librosa
 protobuf
+sentencepiece
+tiktoken

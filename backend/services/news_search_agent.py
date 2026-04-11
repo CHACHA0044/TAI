@@ -67,7 +67,7 @@ class NewsSearchAgent:
         try:
             headlines = [item["headline"] for item in self.search(claim) if item.get("headline")]
             if not headlines:
-                return 0.5
+                return 0.3 # Lowered from 0.5 to trigger skepticism penalty
 
             from sentence_transformers import util
             model = _get_similarity_model()
@@ -91,7 +91,7 @@ class NewsSearchAgent:
 
         except Exception as exc:
             logger.error(f"NewsSearchAgent.get_consistency_score failed: {exc}")
-            return 0.5
+            return 0.3 # Lowered from 0.5
 
     # ------------------------------------------------------------------
     # Private helpers
