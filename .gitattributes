@@ -1,0 +1,2 @@
+backend/models/roberta-finetuned/*.safetensors filter=lfs diff=lfs merge=lfs -text
+backend/models/roberta-finetuned/*.pt filter=lfs diff=lfs merge=lfs -text

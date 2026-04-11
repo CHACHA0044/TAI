@@ -42,7 +42,9 @@ next-env.d.ts
 
 # Data and Models
 backend/data/
-backend/models/
+# backend/models/  <-- Enabled to allow finetuned weights
+/backend/models/checkpoint.pt
+/backend/models/checkpoint/
 backend/uploads/
 backend/node_modules/
 backend/__pycache__/

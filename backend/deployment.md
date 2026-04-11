@@ -1,30 +1,41 @@
 # Manual Deployment to Hugging Face Spaces
 
-Since the automated deployment has been removed, follow these steps to manually push your backend to Hugging Face.
+Since you have **1GB of LFS storage** and have added your secrets, follow these steps to push the code **and the finetuned model** to Hugging Face.
 
-## 1. Setup HF Git Remote
-If you haven't already, add your Hugging Face space as a remote repository:
+## 1. Authentication Fix
+When you run `git push hf main` and it asks for a **Username/Password**:
+- **Username**: Your Hugging Face username (`prana-v12`).
+- **Password**: Your **Hugging Face Access Token** (PAT). 
+    - *Note*: A regular password will not work. Generate a token at [huggingface.co/settings/tokens](https://huggingface.co/settings/tokens) with **Write** access.
+
+## 2. Setup Git LFS (For Model Weights)
+Since you want the finetuned model on HF, you must use Git LFS:
 
 ```bash
-git remote add hf https://huggingface.co/spaces/<YOUR_HF_USERNAME>/<YOUR_SPACE_NAME>
+# Install Git LFS locally
+git lfs install
+
+# Track the large model files
+git lfs track "backend/models/roberta-finetuned/*.safetensors"
+git lfs track "backend/models/roberta-finetuned/*.pt"
+
+# Add the LFS tracking configuration
+git add .gitattributes
 ```
 
-## 2. Push to Hugging Face
-Push the current branch to the Hugging Face `main` branch:
+## 3. Push to Hugging Face
+Now, push everything. This will take a few minutes as it uploads the 500MB model:
 
 ```bash
+git add .
+git commit -m "feat: include finetuned model weights"
 git push hf main
 ```
 
-> [!NOTE]
-> Hugging Face Spaces often require large model files to be tracked via **Git LFS**. Ensure `model.safetensors` and other large files are correctly handled if you intend to host them directly on the Space.
+## 4. Verify Secrets
+Ensure the following are set in your Space's **Settings > Variables and secrets**:
+- `GNEWS_API_KEY`
+- `OPENAI_API_KEY`
 
-## 3. Configure Secrets
-Go to your Space's **Settings** > **Variables and secrets** and add the following:
-
-- `GNEWS_API_KEY`: Your GNews API key.
-- `OPENAI_API_KEY`: Your OpenAI API key for enhanced analysis.
-- `HF_HOME`: (Optional) Set to `/app/.cache` for Space-specific caching.
-
-## 4. Verify Logs
-After pushing, check the **Logs** tab in your Hugging Face Space to ensure the container builds and starts successfully.
+## 5. Deployment Hardware
+Your space is on **CPU Basic**. RoBERTa fine-tuned will run fine on this (it has 16GB RAM), but it may take 10-20 seconds per analysis.
