@@ -13,6 +13,7 @@ URGENCY_OR_COERCION_PATTERNS = [
     "act now",
     "limited time",
     "buy this today",
+    "buy this now",
     "you must",
 ]
 
@@ -38,8 +39,8 @@ def detect_manipulation(text: str, style_metrics: Dict[str, float]) -> Dict[str,
     # Urgency/coercion gets the highest weight because it is the strongest manipulation marker.
     rule_score = min(
         1.0,
-        (len(emotional_hits) * 0.20)
-        + (len(urgency_hits) * 0.24)
+        (len(emotional_hits) * 0.24)
+        + (len(urgency_hits) * 0.30)
         + (len(fear_hits) * 0.16)
         + exclamation_component
         + (0.12 * float(style_metrics.get("lexical_repetition", 0.0))),

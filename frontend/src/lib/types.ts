@@ -13,6 +13,13 @@ export interface AnalysisResult {
   claim_type?: string;
   dimension_buckets?: Record<string, "LOW" | "MEDIUM" | "HIGH">;
   debug?: {
+    text_type_detected?: string;
+    verifiability_result?: string;
+    trust_agent_confidence?: "support" | "contradiction" | "inconclusive" | string;
+    retrieval_support_score?: number;
+    retrieval_contradiction_score?: number;
+    fusion_weights?: Record<string, number>;
+    triggered_rule?: string;
     detector_fired_first?: string;
     why_verdict_chosen?: string;
     final_rule_triggered?: string;

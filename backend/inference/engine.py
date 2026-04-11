@@ -6,7 +6,7 @@ import time
 import re
 import logging
 from datetime import datetime, timezone
-from utils.analysis_utils import get_verdict_and_risk, to_bucket
+from utils.analysis_utils import stage_route_primary_verdict, to_bucket
 
 logger = logging.getLogger("truthguard")
 AI_RAW_MODEL_WEIGHT = 0.7
@@ -341,6 +341,161 @@ Return valid JSON ONLY (no markdown blocks):
         text = (content or "").lower()
         return any(marker in text for marker in markers)
 
+    @staticmethod
+    def _summarize_trust_signals(verification_signals: list) -> dict:
+        if not verification_signals:
+            return {
+                "trust_agent_confidence": "inconclusive",
+                "retrieval_support_score": 0.0,
+                "retrieval_contradiction_score": 0.0,
+            }
+
+        support = float(np.mean([s.get("retrieval_support_score", s.get("match_score", 0.0)) for s in verification_signals]))
+        contradiction = float(np.mean([s.get("retrieval_contradiction_score", 0.0) for s in verification_signals]))
+        buckets = [s.get("trust_agent_confidence", "inconclusive") for s in verification_signals]
+        if "contradiction" in buckets and contradiction >= 0.72:
+            confidence = "contradiction"
+        elif "support" in buckets and support >= 0.56:
+            confidence = "support"
+        else:
+            confidence = "inconclusive"
+
+        return {
+            "trust_agent_confidence": confidence,
+            "retrieval_support_score": max(0.0, min(1.0, support)),
+            "retrieval_contradiction_score": max(0.0, min(1.0, contradiction)),
+        }
+
+    @staticmethod
+    def _route_primary_verdict(
+        *,
+        claim_type: str,
+        claim_verifiable: bool,
+        opinion_detected: bool,
+        sarcasm_detected: bool,
+        factual_claim: bool,
+        trust_agent_confidence: str,
+        retrieval_support_score: float,
+        retrieval_contradiction_score: float,
+        bias_score: float,
+        manipulation_score: float,
+        conspiracy_flag: bool,
+        ai_generated_score: float,
+    ) -> dict:
+        claim_type = claim_type or "MIXED"
+        text_type_map = {
+            "FACTUAL_CLAIM": "factual_claim",
+            "OPINION": "opinion",
+            "PERSUASIVE_COPY": "persuasive/manipulative",
+            "SARCASTIC": "sarcastic/satirical",
+            "SPECULATIVE": "speculative/unverifiable",
+            "MIXED": "mixed",
+        }
+        text_type_detected = text_type_map.get(claim_type, "mixed")
+
+        if sarcasm_detected or claim_type == "SARCASTIC":
+            return {
+                "primary_verdict": "SATIRE_OR_SARCASM",
+                "triggered_rule": "STAGE_2_SARCASM_GATE",
+                "verifiability_result": "non_factual_sarcasm",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "Sarcasm cues triggered before factual evaluation.",
+            }
+
+        if opinion_detected or claim_type == "OPINION":
+            return {
+                "primary_verdict": "OPINION",
+                "triggered_rule": "STAGE_2_OPINION_GATE",
+                "verifiability_result": "non_factual_opinion",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "Subjective/preference language gated this away from factual truth scoring.",
+            }
+
+        if claim_type == "SPECULATIVE" or not claim_verifiable:
+            return {
+                "primary_verdict": "UNVERIFIED_CLAIM",
+                "triggered_rule": "STAGE_2_VERIFIABILITY_GATE",
+                "verifiability_result": "non_verifiable_claim",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "Speculative or unverifiable claim cannot be resolved factually.",
+            }
+
+        if factual_claim:
+            if trust_agent_confidence == "support" and retrieval_support_score >= 0.72 and retrieval_contradiction_score < 0.60:
+                return {
+                    "primary_verdict": "VERIFIED_FACT",
+                    "triggered_rule": "STAGE_3_FACTUAL_SUPPORT",
+                    "verifiability_result": "verifiable_factual_claim",
+                    "text_type_detected": text_type_detected,
+                    "factual_verdict_locked": True,
+                    "why_verdict_chosen": "Strong support retrieval confidence on a verifiable factual claim.",
+                }
+            if trust_agent_confidence == "contradiction" and retrieval_contradiction_score >= 0.72:
+                return {
+                    "primary_verdict": "FALSE_FACT",
+                    "triggered_rule": "STAGE_3_FACTUAL_CONTRADICTION",
+                    "verifiability_result": "verifiable_factual_claim",
+                    "text_type_detected": text_type_detected,
+                    "factual_verdict_locked": True,
+                    "why_verdict_chosen": "Strong contradictory evidence on a verifiable factual claim.",
+                }
+            return {
+                "primary_verdict": "UNVERIFIED_CLAIM",
+                "triggered_rule": "STAGE_3_FACTUAL_INCONCLUSIVE",
+                "verifiability_result": "verifiable_but_inconclusive",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": True,
+                "why_verdict_chosen": "Factual claim did not reach support/contradiction thresholds.",
+            }
+
+        if bias_score >= 0.70:
+            return {
+                "primary_verdict": "BIASED_CONTENT",
+                "triggered_rule": "STAGE_4_BIAS_OVERRIDE",
+                "verifiability_result": "non_factual_mixed",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "High slant/bias signal on non-factual text.",
+            }
+        if manipulation_score >= 0.70:
+            return {
+                "primary_verdict": "MANIPULATIVE_CONTENT",
+                "triggered_rule": "STAGE_4_MANIPULATION_OVERRIDE",
+                "verifiability_result": "non_factual_mixed",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "High coercive/manipulative signal on non-factual text.",
+            }
+        if conspiracy_flag:
+            return {
+                "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+                "triggered_rule": "STAGE_4_CONSPIRACY_OVERRIDE",
+                "verifiability_result": "non_factual_mixed",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "Extraordinary/conspiracy markers dominated non-factual analysis.",
+            }
+        if ai_generated_score >= 0.95:
+            return {
+                "primary_verdict": "LIKELY_AI_GENERATED",
+                "triggered_rule": "STAGE_4_AI_AUXILIARY",
+                "verifiability_result": "non_factual_mixed",
+                "text_type_detected": text_type_detected,
+                "factual_verdict_locked": False,
+                "why_verdict_chosen": "Very high AI-likelihood used only as secondary non-factual signal.",
+            }
+        return {
+            "primary_verdict": "MIXED_ANALYSIS",
+            "triggered_rule": "STAGE_4_MIXED_FALLBACK",
+            "verifiability_result": "non_factual_mixed",
+            "text_type_detected": text_type_detected,
+            "factual_verdict_locked": False,
+            "why_verdict_chosen": "No dominant non-factual override crossed threshold.",
+        }
+
     # ------------------------------------------------------------------
     # Main analysis pipeline
     # ------------------------------------------------------------------
@@ -432,7 +587,15 @@ Return valid JSON ONLY (no markdown blocks):
             except Exception as exc:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
-        claim_type_signal = classify_claim_type(content)
+        claim_type_signal = classify_claim_type(
+            content,
+            model_signals={
+                "truth_score": truth_score,
+                "bias_score": bias_score,
+                "ai_score": ai_generated_score,
+            },
+            style_metrics=style_metrics,
+        )
         claim_type = claim_type_signal.get("claim_type", "MIXED")
         sarcasm_signal = self.sarcasm_detector.detect(content)
         sarcasm_detected = bool(sarcasm_signal.get("sarcasm", False)) or claim_type == "SARCASTIC"
@@ -442,25 +605,20 @@ Return valid JSON ONLY (no markdown blocks):
         bias_score = self._sanitize(max(float(bias_score), float(bias_signal.get("score", 0.0))))
         manipulation_signal = detect_manipulation(content, style_metrics)
         manipulation_score = self._sanitize(float(manipulation_signal.get("score", 0.0)))
-        factual_claim = claim_type == "FACTUAL_CLAIM" or (
-            bool(verifiability.get("claim_verifiable", False))
-            and not bool(verifiability.get("opinion_detected", False))
-            and claim_type not in {"PERSUASIVE_COPY", "UNVERIFIABLE_SPECULATION", "SARCASTIC"}
-        )
+        factual_claim = claim_type == "FACTUAL_CLAIM"
+        trust_summary = self._summarize_trust_signals(verification_signals)
 
         # 5. Fusion & self-check (STRICTLY INDEPENDENT)
         # When no external signals are available, we default to the model truth score.
         if verification_signals:
-            final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
+            external_truth_hint = self._sanitize(
+                0.5 + (
+                    trust_summary["retrieval_support_score"] - trust_summary["retrieval_contradiction_score"]
+                ) * 0.5
+            )
+            final_truth_score = self._sanitize((truth_score * 0.7) + (external_truth_hint * 0.3))
         else:
             final_truth_score = self._sanitize(truth_score)
-        
-        # Heuristic: If we have zero relevant signals and a low news consistency, 
-        # it's likely unsubstantiated/obviously false if it was presented as a fact.
-        if not verification_signals or all(s.get("match_score", 0) < 0.3 for s in verification_signals):
-             if news_consistency_score and news_consistency_score < 0.4:
-                 final_truth_score *= 0.5  # Heavy penalty for "obviously false/unsubstantiated" content
-                 logger.info("Content labeled as highly suspicious (zero news support)")
 
         # AI Likelihood MUST NOT lower the Truth Score. Removed legacy penalty logic.
 
@@ -471,17 +629,30 @@ Return valid JSON ONLY (no markdown blocks):
         
         confidence = self._sanitize(0.4 + 0.55 * abs(final_truth_score - 0.5) * 2 - uncertainty_penalty)
 
-        # 5.5 Enriched analysis (Verdict, Risk, etc)
-        enriched = get_verdict_and_risk(
-            final_truth_score, ai_generated_score, bias_score, confidence,
-            manipulation_score=manipulation_score,
-            sarcasm_detected=sarcasm_detected,
-            conspiracy_flag=conspiracy_flag,
+        # 5.5 Enriched analysis (staged verdict routing)
+        routing = stage_route_primary_verdict(
+            claim_type=claim_type,
             claim_verifiable=bool(verifiability.get("claim_verifiable", True)),
             opinion_detected=bool(verifiability.get("opinion_detected", False)),
-            claim_type=claim_type,
+            sarcasm_detected=sarcasm_detected,
             factual_claim=factual_claim,
+            trust_agent_confidence=trust_summary["trust_agent_confidence"],
+            retrieval_support_score=trust_summary["retrieval_support_score"],
+            retrieval_contradiction_score=trust_summary["retrieval_contradiction_score"],
+            bias_score=bias_score,
+            manipulation_score=manipulation_score,
+            conspiracy_flag=conspiracy_flag,
+            ai_generated_score=ai_generated_score,
         )
+        primary_verdict = routing["primary_verdict"]
+        risk_level = "Medium"
+        recommendation = "Cross-check with trusted sources."
+        if primary_verdict in {"FALSE_FACT", "MANIPULATIVE_CONTENT", "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"}:
+            risk_level = "High"
+            recommendation = "High-risk content. Avoid sharing without independent verification."
+        elif primary_verdict == "VERIFIED_FACT":
+            risk_level = "Low"
+            recommendation = "Content appears factually grounded."
 
         elapsed_ms = int((time.time() - start_time) * 1000)
         logger.info(f"Analysis complete in {elapsed_ms}ms")
@@ -513,13 +684,18 @@ Return valid JSON ONLY (no markdown blocks):
             "verifiability_reason": verifiability.get("reason", "unknown"),
             "claim_type": claim_type,
             "claim_type_signals": claim_type_signal.get("signals", []),
+            "claim_type_scores": claim_type_signal.get("scores", {}),
             "bias_indicators": bias_signal.get("indicators", []),
             "manipulation_indicators": manipulation_signal.get("indicators", []),
+            "trust_agent_confidence": trust_summary["trust_agent_confidence"],
+            "retrieval_support_score": round(trust_summary["retrieval_support_score"], 4),
+            "retrieval_contradiction_score": round(trust_summary["retrieval_contradiction_score"], 4),
         }
 
+        verifiability_score = 0.95 if factual_claim and bool(verifiability.get("claim_verifiable", False)) else 0.3
         dimensions = {
             "truth_score": int(round(final_truth_score * 100)),
-            "verifiability": int(100 if verifiability.get("claim_verifiable", True) else 20),
+            "verifiability": int(round(verifiability_score * 100)),
             "ai_likelihood": int(round(ai_generated_score * 100)),
             "bias_score": int(round(bias_score * 100)),
             "manipulation_score": int(round(manipulation_score * 100)),
@@ -531,12 +707,39 @@ Return valid JSON ONLY (no markdown blocks):
 
         dimension_buckets = {
             "truth_score": to_bucket(final_truth_score),
-            "verifiability": "HIGH" if verifiability.get("claim_verifiable", True) else "LOW",
+            "verifiability": to_bucket(verifiability_score),
             "ai_likelihood": to_bucket(ai_generated_score),
             "bias_score": to_bucket(bias_score),
             "manipulation_score": to_bucket(manipulation_score),
             "sarcasm_score": to_bucket(float(sarcasm_signal.get("score", 0.0))),
             "opinion_score": to_bucket(1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0),
+        }
+
+        debug = {
+            "text_type_detected": routing.get("text_type_detected", "mixed"),
+            "verifiability_result": routing.get("verifiability_result", "unknown"),
+            "trust_agent_confidence": trust_summary["trust_agent_confidence"],
+            "retrieval_support_score": round(trust_summary["retrieval_support_score"], 4),
+            "retrieval_contradiction_score": round(trust_summary["retrieval_contradiction_score"], 4),
+            "fusion_weights": {
+                "model_truth_weight": 0.7 if verification_signals else 1.0,
+                "retrieval_weight": 0.3 if verification_signals else 0.0,
+            },
+            "triggered_rule": routing.get("triggered_rule"),
+            "detector_fired_first": routing.get("triggered_rule", "unknown"),
+            "why_verdict_chosen": routing.get("why_verdict_chosen", ""),
+            "final_rule_triggered": routing.get("triggered_rule"),
+            "raw_intermediate_scores": {
+                "truth_score": round(float(final_truth_score), 4),
+                "verifiability": round(verifiability_score, 4),
+                "ai_likelihood_score": round(float(ai_generated_score), 4),
+                "bias_score": round(float(bias_score), 4),
+                "manipulation_score": round(float(manipulation_score), 4),
+                "sarcasm_score": round(float(sarcasm_signal.get("score", 0.0)), 4),
+                "opinion_score": 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0,
+                "conspiracy_flag": bool(conspiracy_flag),
+                "claim_type": claim_type,
+            },
         }
 
         # Only expose news_consistency_score if it's statistically significant (>0.35)
@@ -565,7 +768,7 @@ Return valid JSON ONLY (no markdown blocks):
                     "burstiness": round(style_metrics.get("burstiness", 0), 4),
                 },
             },
-            "primary_verdict": enriched.get("primary_verdict", "MIXED_ANALYSIS"),
+            "primary_verdict": primary_verdict,
             "confidence": int(round(confidence * 100)),
             "dimensions": dimensions,
             "expanded_analysis": {
@@ -611,21 +814,36 @@ Return valid JSON ONLY (no markdown blocks):
                     "indicators": [
                         f"claim_verifiable={bool(verifiability.get('claim_verifiable', True))}",
                         f"verifiability_reason={verifiability.get('reason', 'unknown')}",
+                        f"trust_agent_confidence={trust_summary['trust_agent_confidence']}",
+                        f"retrieval_support_score={round(trust_summary['retrieval_support_score'], 4)}",
+                        f"retrieval_contradiction_score={round(trust_summary['retrieval_contradiction_score'], 4)}",
                     ],
                 },
             },
             "signals": signals,
             **({"news_consistency_score": round(news_consistency_score, 2)} if is_news_relevant else {}),
-            **enriched,
+            "triggered_rule": routing.get("triggered_rule"),
+            "verdict": primary_verdict.replace("_", " ").title(),
+            "risk_level": risk_level,
+            "recommendation": recommendation,
+            "key_factors": sorted(
+                set(
+                    [
+                        routing.get("why_verdict_chosen", ""),
+                        f"claim_type={claim_type}",
+                        f"trust={trust_summary['trust_agent_confidence']}",
+                    ]
+                )
+            ),
             "metadata": {
                 "model": "roberta-finetuned + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "raw_metadata": {
-                    "aggregation_rule": enriched.get("triggered_rule", "RULE_10_MIXED"),
+                    "aggregation_rule": routing.get("triggered_rule", "STAGE_4_MIXED_FALLBACK"),
                     "dimension_buckets": dimension_buckets,
                     "claim_type": claim_type,
-                    "debug": enriched.get("debug", {}),
+                    "debug": debug,
                     "raw_classifier_outputs": raw_classifier_outputs,
                     "feature_metrics": {
                         "perplexity": round(raw_features.get("perplexity", 0), 4),
@@ -637,7 +855,7 @@ Return valid JSON ONLY (no markdown blocks):
             },
             "dimension_buckets": dimension_buckets,
             "claim_type": claim_type,
-            "debug": enriched.get("debug", {}),
+            "debug": debug,
         }
 
     def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None):

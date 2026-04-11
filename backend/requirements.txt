@@ -29,3 +29,4 @@ pymongo
 motor
 google-generativeai
 groq
+onnxruntime
