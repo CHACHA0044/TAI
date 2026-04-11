@@ -27,3 +27,6 @@ sentencepiece
 tiktoken
 pymongo
 motor
+google-generativeai
+groq
+onnxruntime

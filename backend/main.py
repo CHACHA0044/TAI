@@ -11,8 +11,9 @@ import time
 
 from fastapi import FastAPI, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Union
+from enum import Enum
 import uvicorn
 
 # Celery / Redis are optional — only needed for async video processing.
@@ -129,6 +130,7 @@ class StylometryInfo(BaseModel):
     sentence_length_variance: float
     repetition_score: float
     lexical_diversity: float
+    burstiness: Optional[float] = 0.0
 
 
 class FeaturesInfo(BaseModel):
@@ -149,6 +151,56 @@ class MetadataInfo(BaseModel):
     raw_metadata: Optional[dict] = None
 
 
+class PrimaryVerdict(str, Enum):
+    VERIFIED_FACT = "VERIFIED_FACT"
+    FALSE_FACT = "FALSE_FACT"
+    UNVERIFIED_CLAIM = "UNVERIFIED_CLAIM"
+    OPINION = "OPINION"
+    BIASED_CONTENT = "BIASED_CONTENT"
+    MANIPULATIVE_CONTENT = "MANIPULATIVE_CONTENT"
+    SATIRE_OR_SARCASM = "SATIRE_OR_SARCASM"
+    CONSPIRACY_OR_EXTRAORDINARY_CLAIM = "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"
+    LIKELY_AI_GENERATED = "LIKELY_AI_GENERATED"
+    MIXED_ANALYSIS = "MIXED_ANALYSIS"
+
+
+class DimensionsInfo(BaseModel):
+    truth_score: int = 0
+    verifiability: int = 0
+    ai_likelihood: int = 0
+    bias_score: int = 0
+    manipulation_score: int = 0
+    sarcasm_score: int = 0
+    opinion_score: int = 0
+    sarcasm: bool = False
+    conspiracy_flag: bool = False
+
+
+class TruthExpandedInfo(BaseModel):
+    explanation: str = ""
+    evidence: str = ""
+    sources: List[str] = Field(default_factory=list)
+
+
+class AiExpandedInfo(BaseModel):
+    explanation: str = ""
+    indicators: List[str] = Field(default_factory=list)
+
+
+class BiasExpandedInfo(BaseModel):
+    explanation: str = ""
+    indicators: List[str] = Field(default_factory=list)
+
+
+class ExpandedAnalysisInfo(BaseModel):
+    truth_score: TruthExpandedInfo = Field(default_factory=TruthExpandedInfo)
+    ai_likelihood: AiExpandedInfo = Field(default_factory=AiExpandedInfo)
+    bias_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    manipulation_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    opinion_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    verifiability: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+
+
 class AnalysisResponse(BaseModel):
     truth_score: float
     ai_generated_score: float
@@ -166,10 +218,18 @@ class AnalysisResponse(BaseModel):
     news_consistency_score: Optional[float] = None
     ocr_text: Optional[str] = None
     # Rich analysis fields
+    primary_verdict: PrimaryVerdict = PrimaryVerdict.MIXED_ANALYSIS
+    triggered_rule: Optional[str] = None
+    claim_type: Optional[str] = None
+    confidence: int = 0
+    dimensions: DimensionsInfo = Field(default_factory=DimensionsInfo)
+    dimension_buckets: Optional[dict] = None
+    expanded_analysis: ExpandedAnalysisInfo = Field(default_factory=ExpandedAnalysisInfo)
+    debug: Optional[dict] = None
     verdict: str = "Inconclusive"
     risk_level: str = "Medium"
     recommendation: str = "Verify against trusted sources."
-    key_factors: List[str] = []
+    key_factors: List[str] = Field(default_factory=list)
 
 class JobResponse(BaseModel):
     status: str

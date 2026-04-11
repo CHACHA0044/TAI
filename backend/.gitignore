@@ -1,7 +1,10 @@
 # Git ignore for HF Spaces Backend deployment
 .env
 data/
-models/
+models/*
+!models/claim_type/
+!models/claim_type/claim_type.onnx
+!models/claim_type/labels.json
 node_modules/
 __pycache__/
 *.pyc

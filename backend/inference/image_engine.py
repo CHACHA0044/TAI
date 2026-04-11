@@ -35,11 +35,16 @@ class ImageEngine:
 
         if self.using_transformers:
             try:
-                logger.info(f"Loading image model: {model_name}...")
+                logger.info(f"Loading image model: {model_name} (Half-Precision)...")
                 self.processor = AutoImageProcessor.from_pretrained(model_name)
-                self.model = AutoModelForImageClassification.from_pretrained(model_name).to(self.device)
+                # Load in float16 to save memory on free-tier spaces
+                self.model = AutoModelForImageClassification.from_pretrained(
+                    model_name, 
+                    torch_dtype=torch.float16,
+                    low_cpu_mem_usage=True
+                ).to(self.device)
                 self.model.eval()
-                logger.info("Image model loaded successfully")
+                logger.info("Image model loaded successfully in FP16")
             except Exception as e:
                 logger.error(f"Failed to load image model: {e}")
                 self.using_transformers = False
@@ -114,6 +119,8 @@ class ImageEngine:
                 logger.info("Running neural artifacts scan...")
                 inputs = self.processor(images=img_rgb, return_tensors="pt").to(self.device)
                 with torch.no_grad():
+                    # Move inputs to same dtype as model
+                    inputs = {k: v.to(self.device).to(torch.float16) if v.is_floating_point() else v.to(self.device) for k, v in inputs.items()}
                     outputs = self.model(**inputs)
                     probs = F.softmax(outputs.logits, dim=-1)
                 
@@ -122,6 +129,12 @@ class ImageEngine:
                 
                 neural_score = prob_dict.get('Deepfake', 0.5)
                 confidence = float(torch.max(probs).item())
+                
+                # If the model is returning exactly 0.5/0.5, it's often a sign of failure or uninitialized state
+                if round(neural_score, 4) == 0.5000 and round(confidence, 4) == 0.5000:
+                    logger.warning("Neural model returned neutral 0.5/0.5 - treating as uncertain")
+                    confidence = 0.4 # Force low confidence
+                
                 logger.info(f"Neural scan complete: score={neural_score:.2f}, confidence={confidence:.2f}")
 
             # 2. Forensic Layers
@@ -159,6 +172,13 @@ class ImageEngine:
                 key_factors.append("High ELA compression anomalies detected (pixel-level manipulation)")
             elif ela_suspicion > 0.4:
                 key_factors.append("Partial compression inconsistencies suggestive of editing")
+            
+            # 3.6 Natural Texture / High-Frequency Check
+            # Check for extremely low ELA suspicion (too perfect) combined with neutral neural score
+            if ela_suspicion < 0.15 and round(neural_score, 2) == 0.50:
+                key_factors.append("High-integrity pixel structure detected - potential 'perfect' synthetic generation")
+                # Slightly nudge suspicion up as real photos always have some sensor noise
+                ela_suspicion = max(ela_suspicion, 0.25) 
 
             # 4. Classification Logic
             category = "REAL"
@@ -172,10 +192,15 @@ class ImageEngine:
                     category = "DEEPFAKE"
                 else:
                     category = "AI_GENERATED"
-            elif ela_suspicion > 0.5:
+            elif ela_suspicion > 0.6: # High ELA suspicion alone can flag deepfake
                 category = "DEEPFAKE"
-            else:
+            elif neural_score < 0.3 and ela_suspicion < 0.3:
                 category = "REAL"
+            else:
+                # Catch-all for uncertain/mixed signals
+                category = "UNCERTAIN"
+                if neural_score > 0.5 or ela_suspicion > 0.4:
+                    ai_generated_score = max(ai_generated_score, 0.6)
 
             # 5. OCR — extract text from image (e.g. memes, documents)
             ocr_text = self._extract_ocr_text(img_rgb)
@@ -259,4 +284,7 @@ class ImageEngine:
         if category == "DEEPFAKE":
             return f"Manipulation Detected (Deepfake). Significant inconsistencies found in the pixel-level compression noise (ELA: {ela:.2f}), indicating localized editing or face-swapping."
             
+        if category == "UNCERTAIN":
+            return "Analysis results are inconclusive. While no definitive AI signatures were found, the pixel structure and neural metadata lack the high-confidence markers required for an 'Authentic' verdict. Manual verification is recommended."
+
         return "Authentic Photo. Pixel-level grain, sensor noise distribution, and standard compression metrics are all consistent with a real-world camera sensor."

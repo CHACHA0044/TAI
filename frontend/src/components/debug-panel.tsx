@@ -16,6 +16,11 @@ export function DebugPanel({ data }: DebugPanelProps) {
   const perplexity = data.features?.perplexity ?? 0;
   const model = data.metadata?.model ?? "unknown";
   const latency = data.metadata?.latency_ms ?? 0;
+  const rawMeta = (data.metadata?.raw_metadata ?? {}) as Record<string, unknown>;
+  const featureMetrics = (rawMeta.feature_metrics ?? {}) as Record<string, unknown>;
+  const rawClassifierOutputs = (rawMeta.raw_classifier_outputs ?? {}) as Record<string, unknown>;
+  const aggregationRule = String(rawMeta.aggregation_rule ?? data.triggered_rule ?? "N/A");
+  const debug = (data.debug ?? {}) as Record<string, unknown>;
 
   return (
     <div className="mt-8">
@@ -57,6 +62,7 @@ export function DebugPanel({ data }: DebugPanelProps) {
                   ) : (
                     <>
                       <MetricRow label="Sentence Variance" value={(stylometry?.sentence_length_variance ?? 0).toFixed(2)} />
+                      <MetricRow label="Burstiness" value={Number(stylometry?.burstiness ?? featureMetrics.burstiness ?? 0).toFixed(4)} />
                       <MetricRow label="Repetition Score" value={(stylometry?.repetition_score ?? 0).toFixed(4)} />
                       <MetricRow label="Lexical Diversity" value={(stylometry?.lexical_diversity ?? 0).toFixed(4)} />
                     </>
@@ -71,6 +77,18 @@ export function DebugPanel({ data }: DebugPanelProps) {
                 </h4>
                 <div className="space-y-3">
                   {!data.category && <MetricRow label="Perplexity" value={perplexity.toFixed(1)} />}
+                  {!data.category && <MetricRow label="Aggregation Rule" value={aggregationRule} />}
+                  {!data.category && <MetricRow label="Text Type Detected" value={String(debug.text_type_detected ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Verifiability Result" value={String(debug.verifiability_result ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Trust Agent Confidence" value={String(debug.trust_agent_confidence ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Retrieval Support Score" value={String(debug.retrieval_support_score ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Retrieval Contradiction Score" value={String(debug.retrieval_contradiction_score ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Feature Burstiness" value={String(featureMetrics.burstiness ?? "0")} />}
+                  {!data.category && <MetricRow label="Feature Sentence Variance" value={String(featureMetrics.sentence_variance ?? stylometry?.sentence_length_variance ?? 0)} />}
+                  {!data.category && <MetricRow label="Feature Lexical Diversity" value={String(featureMetrics.lexical_diversity ?? stylometry?.lexical_diversity ?? 0)} />}
+                  {!data.category && <MetricRow label="Raw Truth Output" value={String(rawClassifierOutputs.truth_model_raw ?? data.truth_score)} />}
+                  {!data.category && <MetricRow label="Raw AI Output" value={String(rawClassifierOutputs.ai_model_raw ?? data.ai_generated_score)} />}
+                  {!data.category && <MetricRow label="Raw Bias Output" value={String(rawClassifierOutputs.bias_model_raw ?? data.bias_score)} />}
                   <MetricRow label="Active Model" value={model} />
                   <MetricRow label="Processing Latency" value={`${latency}ms`} />
                   <MetricRow label="Timestamp" value={new Date(data.metadata.timestamp).toLocaleTimeString()} />
