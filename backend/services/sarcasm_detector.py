@@ -22,6 +22,10 @@ class HuggingFaceSarcasmAdapter:
 
 
 class SarcasmDetector:
+    MARKER_WEIGHT = 0.25
+    PUNCTUATION_WEIGHT = 0.2
+    SARCASM_THRESHOLD = 0.55
+
     def __init__(self):
         self.hf_adapter = HuggingFaceSarcasmAdapter()
         self.markers = [
@@ -39,10 +43,14 @@ class SarcasmDetector:
         normalized = (text or "").lower()
         marker_hits = [m for m in self.markers if m in normalized]
         punctuation_cue = "!" in normalized and "?" in normalized
-        heuristic_score = min(1.0, (len(marker_hits) * 0.25) + (0.2 if punctuation_cue else 0.0))
+        heuristic_score = min(
+            1.0,
+            (len(marker_hits) * self.MARKER_WEIGHT)
+            + (self.PUNCTUATION_WEIGHT if punctuation_cue else 0.0),
+        )
         hf_signal = self.hf_adapter.detect(text)
         score = max(heuristic_score, float(hf_signal.get("score", 0.0)))
-        sarcasm = score >= 0.55 or bool(hf_signal.get("sarcasm", False))
+        sarcasm = score >= self.SARCASM_THRESHOLD or bool(hf_signal.get("sarcasm", False))
 
         indicators = list(marker_hits)
         if punctuation_cue:

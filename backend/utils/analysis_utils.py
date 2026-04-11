@@ -31,7 +31,7 @@ def aggregate_primary_verdict(
     if sarcasm_detected:
         return "SATIRE_OR_SARCASM", "RULE_1_SARCASM"
     if ai_score > 0.85 and truth_score > 0.50:
-        return "LIKELY_AI_GENERATED", "RULE_2_AI_HIGH_TRUTH_MID"
+        return "LIKELY_AI_GENERATED", "RULE_2_AI_HIGH_TRUTH"
     if truth_score < 0.30 and claim_verifiable:
         return "FALSE_FACT", "RULE_3_FALSE_VERIFIABLE"
     if not claim_verifiable:

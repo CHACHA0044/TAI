@@ -9,6 +9,10 @@ from datetime import datetime, timezone
 from utils.analysis_utils import get_verdict_and_risk
 
 logger = logging.getLogger("truthguard")
+AI_PPL_BASELINE = 55.0
+AI_PPL_CAP = 120.0
+AI_RAW_MODEL_WEIGHT = 0.7
+AI_OPENAI_BLEND_WEIGHT = 0.3
 
 # Attempt to import heavyweight deps, fail gracefully
 try:
@@ -331,8 +335,9 @@ Return your response as valid JSON ONLY:
         No literal keyword triggers are used.
         """
         perplexity = float(raw_features.get("perplexity", 45.0))
-        # Lower perplexity can indicate machine-generated text, but use reduced weight.
-        ppl_component = self._sanitize((55.0 - min(perplexity, 120.0)) / 55.0, default=0.5)
+        # Lower perplexity can indicate machine-generated text, but we downweight it to
+        # avoid false positives on formal writing that naturally has lower perplexity.
+        ppl_component = self._sanitize((AI_PPL_BASELINE - min(perplexity, AI_PPL_CAP)) / AI_PPL_BASELINE, default=0.5)
         repetition_component = self._sanitize(style_metrics.get("lexical_repetition", 0.0))
         uniformity_component = self._sanitize(style_metrics.get("sentence_length_uniformity", 0.5))
         consistency_component = self._sanitize(style_metrics.get("stylometric_consistency", 0.5))
@@ -429,7 +434,9 @@ Return your response as valid JSON ONLY:
                 if bias_val > 1.0: bias_val /= 100.0
 
             truth_score = (truth_score * 0.2) + (ts_val * 0.8)
-            raw_model_ai_score = (raw_model_ai_score * 0.7) + (ai_val * 0.3)
+            # AI score uses a lower OpenAI blend than truth/bias so local stylometric
+            # feature blending remains the dominant signal for AI likelihood calibration.
+            raw_model_ai_score = (raw_model_ai_score * AI_RAW_MODEL_WEIGHT) + (ai_val * AI_OPENAI_BLEND_WEIGHT)
             bias_score = (bias_score * 0.2) + (bias_val * 0.8)
             
             if "ai_reasoning" in oa_res:
@@ -496,8 +503,8 @@ Return your response as valid JSON ONLY:
 
         # 5.5 Enriched analysis (Verdict, Risk, etc)
         enriched = get_verdict_and_risk(
-            final_truth_score, ai_generated_score, bias_score, confidence
-            , manipulation_score=manipulation_score,
+            final_truth_score, ai_generated_score, bias_score, confidence,
+            manipulation_score=manipulation_score,
             sarcasm_detected=bool(sarcasm_signal.get("sarcasm", False)),
             conspiracy_flag=conspiracy_flag,
             claim_verifiable=bool(verifiability.get("claim_verifiable", True)),
@@ -519,10 +526,7 @@ Return your response as valid JSON ONLY:
                 "confidence": round(vs.get("agent_credibility", 0.5), 2),
             })
 
-        truth_sources = [
-            s["source"]
-            for s in signals
-        ]
+        truth_sources = [s.get("source", "Unknown source") for s in signals]
 
         raw_classifier_outputs = {
             "truth_model_raw": round(truth_score, 4),

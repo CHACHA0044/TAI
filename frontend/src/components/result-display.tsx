@@ -217,7 +217,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           </h3>
         </div>
         <p className="text-white/70 text-sm leading-relaxed mb-6 italic">
-          &ldquo;{result.explanation}&rdquo;
+          {`"${result.explanation}"`}
         </p>
 
         {/* Verification Signals — only shown for text results (no category) */}
