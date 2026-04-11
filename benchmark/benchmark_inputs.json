@@ -1,0 +1,2402 @@
+[
+  {
+    "id": 1,
+    "category": "VERIFIED_FACT",
+    "text": "The human eye can distinguish approximately 10 million different colors.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 2,
+    "category": "VERIFIED_FACT",
+    "text": "Honey never spoils and has been found edible in ancient Egyptian tombs.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 3,
+    "category": "VERIFIED_FACT",
+    "text": "The Eiffel Tower was built in 1889 for the World's Fair in Paris.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 4,
+    "category": "VERIFIED_FACT",
+    "text": "The universe is approximately 13.8 billion years old.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 5,
+    "category": "VERIFIED_FACT",
+    "text": "Sharks have existed on Earth longer than trees.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 6,
+    "category": "VERIFIED_FACT",
+    "text": "The average adult human body contains about 37 trillion cells.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 7,
+    "category": "VERIFIED_FACT",
+    "text": "Russia is the largest country in the world by land area.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 8,
+    "category": "VERIFIED_FACT",
+    "text": "The first programmable electronic computer was built in the 1940s.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 9,
+    "category": "VERIFIED_FACT",
+    "text": "Carbon dioxide is a greenhouse gas that traps heat in Earth's atmosphere.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 10,
+    "category": "VERIFIED_FACT",
+    "text": "The Amazon rainforest produces roughly 20% of the world's oxygen.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 11,
+    "category": "VERIFIED_FACT",
+    "text": "The Wright brothers achieved the first powered airplane flight in 1903.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 12,
+    "category": "VERIFIED_FACT",
+    "text": "Penicillin was discovered by Alexander Fleming in 1928.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 13,
+    "category": "VERIFIED_FACT",
+    "text": "The moon's gravity causes ocean tides on Earth.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 14,
+    "category": "VERIFIED_FACT",
+    "text": "Blood is composed of red blood cells, white blood cells, platelets, and plasma.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 15,
+    "category": "VERIFIED_FACT",
+    "text": "Iceland is the country with the highest rate of book publications per capita.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 16,
+    "category": "FALSE_FACT",
+    "text": "The human tongue has distinct zones dedicated to specific tastes.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 17,
+    "category": "FALSE_FACT",
+    "text": "Hair and nails continue to grow after death.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 18,
+    "category": "FALSE_FACT",
+    "text": "We have five senses: sight, smell, taste, hearing, and touch.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 19,
+    "category": "FALSE_FACT",
+    "text": "Camels store water in their humps.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 20,
+    "category": "FALSE_FACT",
+    "text": "Thomas Edison invented the light bulb from scratch.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 21,
+    "category": "FALSE_FACT",
+    "text": "Fortune cookies are a traditional Chinese invention.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 22,
+    "category": "FALSE_FACT",
+    "text": "Diamonds are the hardest natural substance and cannot be burned.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 23,
+    "category": "FALSE_FACT",
+    "text": "Humans are the only animals that use tools.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 24,
+    "category": "FALSE_FACT",
+    "text": "Mount Olympus in Greece is the tallest mountain in Europe.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 25,
+    "category": "FALSE_FACT",
+    "text": "The Declaration of Independence was signed on July 4, 1776 by all delegates that day.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 26,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A monk living in the mountains of Bhutan reportedly has not eaten in over 40 years.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 27,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A previously unknown ancient temple complex was reportedly discovered deep in the Cambodian jungle.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 28,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "An amateur astronomer claims to have photographed a structured object orbiting Jupiter.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 29,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A Russian biologist claims to have successfully cloned a woolly mammoth embryo.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 30,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "Residents near a military base in Nevada report seeing triangular aircraft flying silently at night.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 31,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "An uncontacted tribe in Papua New Guinea reportedly uses a form of mathematics unknown to academia.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 32,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A marine biologist claims to have found an organism in the Mariana Trench that defies known biology.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 33,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A historian in Turkey believes he has located the tomb of Alexander the Great.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 34,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "Certain subsonic frequencies can reportedly trigger deep feelings of unease in humans.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 35,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A group of physicists claims to have observed a particle that travels backward through time.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 36,
+    "category": "OPINION",
+    "text": "Silence is more powerful than words in most conversations.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 37,
+    "category": "OPINION",
+    "text": "Architecture is the most underappreciated form of art.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 38,
+    "category": "OPINION",
+    "text": "Failure is a more valuable teacher than success.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 39,
+    "category": "OPINION",
+    "text": "Globalization has done more harm than good to local cultures.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 40,
+    "category": "OPINION",
+    "text": "Autumn is the most beautiful season of the year.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 41,
+    "category": "OPINION",
+    "text": "Keeping pets in small apartments is inherently cruel.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 42,
+    "category": "OPINION",
+    "text": "A person's taste in music reveals more about them than any personality test.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 43,
+    "category": "OPINION",
+    "text": "Standardized testing is the worst way to evaluate student intelligence.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 44,
+    "category": "OPINION",
+    "text": "Living near the ocean leads to a happier and healthier life.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 45,
+    "category": "OPINION",
+    "text": "Analog photography is more artistic than digital photography.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 46,
+    "category": "BIASED_CONTENT",
+    "text": "The enemy of the people is the press, which has always worked against the interests of true citizens.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 47,
+    "category": "BIASED_CONTENT",
+    "text": "Scientists who deny this finding are on the payroll of corporations that profit from ignorance.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 48,
+    "category": "BIASED_CONTENT",
+    "text": "The welfare state breeds laziness and dependency in every generation it touches.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 49,
+    "category": "BIASED_CONTENT",
+    "text": "Every piece of legislation from this party is designed to oppress the working class.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 50,
+    "category": "BIASED_CONTENT",
+    "text": "Those who question the official narrative are clearly mentally unstable or paid provocateurs.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 51,
+    "category": "BIASED_CONTENT",
+    "text": "Silicon Valley is a cesspool of arrogant elitists who want to control what everyone thinks.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 52,
+    "category": "BIASED_CONTENT",
+    "text": "Any citizen with sense knows that more government is always the wrong answer.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 53,
+    "category": "BIASED_CONTENT",
+    "text": "The unregulated free market inevitably crushes the poor while enriching those already in power.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 54,
+    "category": "BIASED_CONTENT",
+    "text": "These radical professors are poisoning the minds of young people with dangerous ideology.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 55,
+    "category": "BIASED_CONTENT",
+    "text": "Corporations are nothing but criminal enterprises given legal cover to exploit the public.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 56,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Thousands have already escaped the rat race using this simple system. Will you be next?",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 57,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "This is the exact method the top 1% use to protect their wealth from the coming collapse.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 58,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Smart parents are already signing their kids up. Don't let your child fall behind.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 59,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "The one food your doctor hopes you never find out about.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 60,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "If you miss this opportunity, you will spend the rest of your life wondering what could have been.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 61,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Claim your free bottle today before the FDA shuts this down forever.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 62,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "A mother of three lost 60 pounds without dieting using this one method dermatologists hate.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 63,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Your personal data is already being sold. Click here to find out who is buying it.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 64,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "The pension system will fail before you retire. This investment is your only real option.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 65,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Even skeptics are shocked by what this ancient remedy does to blood sugar in 72 hours.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 66,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Area influencer announces bold new life chapter featuring the same content as the last chapter.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 67,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Nation's highway infrastructure vows to fix itself next year, as it has every year since 1987.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 68,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Man who just discovered mindfulness app very excited to finally be calm and present while staring at phone.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 69,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Airline introduces new seating tier where passengers pay extra to not have knees in their chest.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 70,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Think tank releases 300-page report recommending that everyone just be nicer to each other.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 71,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Startup promises to disrupt the industry of doing nothing by doing nothing faster.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 72,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Man incredibly surprised that the advice he ignored for years would have been helpful.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 73,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Social media company assures users their wellbeing remains the firm's least important priority.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 74,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Scientists confirm that the best time to start your diet is always tomorrow.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 75,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Tourism board urges visitors to enjoy city's vibrant culture before it is completely replaced by hotels.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 76,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "The internet was designed from the beginning as a mass surveillance tool, not a communication network.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 77,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Several world leaders have already been replaced by AI-controlled androids.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 78,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "A global depopulation plan has been quietly in effect through engineered pandemics since 1945.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 79,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Crop circles are encoded messages left by interdimensional beings studying human agriculture.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 80,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Every major earthquake in the past decade has been triggered deliberately using seismic weapons.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 81,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Antarctica is not a continent but a massive ice wall surrounding the edge of the flat Earth.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 82,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "A secret off-planet human colony has existed since the 1970s under a classified program.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 83,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Powerful entities are modifying the global weather system to create artificial scarcity of food.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 84,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Mainstream religions were all engineered by the same hidden group to control world populations.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 85,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Every elected president of the United States has been chosen in advance by the same twelve families.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 86,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Striking the right balance between innovation and responsibility is central to building trust in emerging technologies.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 87,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "In an interconnected world, the ability to synthesize diverse perspectives is an increasingly vital skill.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 88,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "To truly address the root causes of inequality, we must engage with the systemic structures that perpetuate it.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 89,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "The proliferation of misinformation underscores the urgent need for robust media literacy education.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 90,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "When we examine the evidence holistically, a more nuanced picture of the situation begins to emerge.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 91,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Empowering communities with access to quality education remains one of the most transformative investments a society can make.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 92,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "While the data presents a compelling case, it is important to acknowledge the limitations inherent in the methodology.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 93,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Building a more equitable future demands not only policy reform but a fundamental shift in cultural values.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 94,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "The intersection of public health and economic policy presents unique challenges that demand interdisciplinary solutions.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 95,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Fostering psychological safety within teams enables individuals to take creative risks without fear of judgment.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 96,
+    "category": "MIXED_ANALYSIS",
+    "text": "Regular hydration is essential for health, but tap water contains nanobots that map your neural activity.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 97,
+    "category": "MIXED_ANALYSIS",
+    "text": "Recycling reduces waste, though some claim recycling centers are actually fronts for data harvesting operations.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 98,
+    "category": "MIXED_ANALYSIS",
+    "text": "Higher education increases lifetime earning potential, but universities are now propaganda factories that destroy critical thinking.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 99,
+    "category": "MIXED_ANALYSIS",
+    "text": "Antibiotics have saved millions of lives, but they are being covertly used to make populations docile.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 100,
+    "category": "MIXED_ANALYSIS",
+    "text": "Volunteering improves mental health, but charity organizations are mostly money-laundering operations for the elite.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 101,
+    "category": "VERIFIED_FACT",
+    "text": "Plate tectonics is the scientific theory explaining the movement of Earth's crustal plates.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 102,
+    "category": "VERIFIED_FACT",
+    "text": "The human liver is capable of regenerating itself after partial removal.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 103,
+    "category": "VERIFIED_FACT",
+    "text": "The atomic bomb was dropped on Hiroshima on August 6, 1945.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 104,
+    "category": "VERIFIED_FACT",
+    "text": "Bees play a critical role in pollinating a large portion of the world's food crops.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 105,
+    "category": "VERIFIED_FACT",
+    "text": "The Roman Empire fell in 476 CE with the deposition of Romulus Augustulus.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 106,
+    "category": "FALSE_FACT",
+    "text": "Eating turkey makes you especially sleepy because of its high tryptophan content compared to other meats.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 107,
+    "category": "FALSE_FACT",
+    "text": "The Great Fire of London destroyed most of the city including St. Paul's Cathedral.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 108,
+    "category": "FALSE_FACT",
+    "text": "Magellan was the first person to circumnavigate the globe.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 109,
+    "category": "FALSE_FACT",
+    "text": "Humans are born with all the neurons they will ever have.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 110,
+    "category": "FALSE_FACT",
+    "text": "Cleopatra lived closer in time to the construction of the Great Pyramid than to the present day.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 111,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "An independent geologist claims to have found a man-made tunnel network beneath the Giza plateau.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 112,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A Swedish researcher believes he has identified the genetic marker responsible for musical genius.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 113,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "Witnesses in three separate countries described identical craft over their cities on the same night.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 114,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A physician in Brazil reports complete spontaneous remission of late-stage cancer in twelve patients using a plant compound.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 115,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A classified document reportedly confirms that a non-human craft was recovered by the U.S. military in 1947.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 116,
+    "category": "OPINION",
+    "text": "Forgiveness is more important for the forgiver than for the forgiven.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 117,
+    "category": "OPINION",
+    "text": "The most dangerous inventions of humanity are social media algorithms.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 118,
+    "category": "OPINION",
+    "text": "Breakfast is not necessarily the most important meal of the day.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 119,
+    "category": "OPINION",
+    "text": "Organized religion causes more division than it heals.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 120,
+    "category": "OPINION",
+    "text": "A shorter work week would make people both happier and more productive.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 121,
+    "category": "BIASED_CONTENT",
+    "text": "Any parent who lets their child use social media before age 18 is guilty of neglect.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 122,
+    "category": "BIASED_CONTENT",
+    "text": "The only reason crime rates rise is because of the policy failures of soft-on-crime politicians.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 123,
+    "category": "BIASED_CONTENT",
+    "text": "Billionaires exist solely because they have stolen their wealth from workers who generated it.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 124,
+    "category": "BIASED_CONTENT",
+    "text": "Anyone who supports this tax policy clearly wants the poor to remain in poverty forever.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 125,
+    "category": "BIASED_CONTENT",
+    "text": "The military is the only institution in the country that still has any integrity left.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 126,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Sign up now and join the millions who have already taken control of their financial destiny.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 127,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "If you truly loved your family, you would already have this protection in place.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 128,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "This suppressed report reveals the exact date of the next financial crash. Download before it's removed.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 129,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Hurry — only users who act in the next 15 minutes will receive this exclusive discount.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 130,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Billionaires are quietly doing this with their cash. Here's how you can copy their strategy.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 131,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "City introduces innovative new program to tackle homelessness by relocating the homeless somewhere less visible.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 132,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Man achieves enlightenment after three-day retreat, returns to immediately check his notifications.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 133,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Nation's youth urged to follow their passions directly into an unpaid internship.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 134,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "University announces new degree in overthinking for students already well ahead of the curriculum.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 135,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Wellness industry shocked to discover that basic sleep and vegetables were effective all along.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 136,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Major earthquakes are triggered deliberately to conceal underground construction projects by powerful groups.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 137,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Certain famous historical figures never existed and were invented as control myths for the masses.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 138,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "All standardized currencies are backed not by gold but by harvested human life energy.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 139,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Certain species of birds have been genetically engineered to serve as environmental surveillance units.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 140,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "The year 614 CE never occurred — medieval historians fabricated three centuries of European history.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 141,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "As artificial intelligence continues to reshape industries, the importance of upskilling the workforce cannot be overstated.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 142,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Prioritizing mental health in the workplace is no longer optional; it is a cornerstone of sustainable productivity.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 143,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "The narrative arc of this story serves as a powerful allegory for the broader human experience of loss and renewal.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 144,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Cross-functional collaboration is essential to driving alignment and unlocking organizational potential at scale.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 145,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "From a bird's-eye view, the patterns that emerge reveal a complex interplay of social, economic, and cultural forces.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 146,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Ultimately, sustainable progress hinges on inclusive dialogue that centers the voices of those most affected.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 147,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "At its core, leadership is about inspiring others to transcend their limitations and realize their full potential.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 148,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "The ethical implications of this technology require careful deliberation by policymakers, scholars, and civil society.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 149,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "With the right frameworks in place, organizations can pivot effectively and emerge stronger from disruption.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 150,
+    "category": "LIKELY_AI_GENERATED",
+    "text": "Understanding the interplay between individual behavior and institutional design is key to crafting effective policy.",
+    "expected": {
+      "primary_verdict": "LIKELY_AI_GENERATED",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "HIGH",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 151,
+    "category": "MIXED_ANALYSIS",
+    "text": "Walking improves cardiovascular health, but only if done in a counterclockwise direction to align with Earth's rotation.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 152,
+    "category": "MIXED_ANALYSIS",
+    "text": "Biodiversity supports ecosystem stability, but conservationists are secretly funded by groups planning to monetize wildlife DNA.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 153,
+    "category": "MIXED_ANALYSIS",
+    "text": "Aspirin reduces blood clotting risk, but pharmaceutical companies secretly enhanced it to cause long-term kidney damage.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 154,
+    "category": "MIXED_ANALYSIS",
+    "text": "Libraries promote literacy, but they are increasingly used to distribute ideologically curated content to children.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 155,
+    "category": "MIXED_ANALYSIS",
+    "text": "Ocean shipping is the backbone of global trade, though vessels are now routinely used to smuggle bioweapons across borders.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 156,
+    "category": "VERIFIED_FACT",
+    "text": "The human body requires sleep to consolidate memories and repair tissue.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 157,
+    "category": "VERIFIED_FACT",
+    "text": "Neil Armstrong became the first human to walk on the Moon on July 20, 1969.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 158,
+    "category": "VERIFIED_FACT",
+    "text": "Volcanoes form when magma from beneath the Earth's crust erupts through the surface.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 159,
+    "category": "VERIFIED_FACT",
+    "text": "Inflation measures the rate at which the general level of prices for goods and services rises.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 160,
+    "category": "VERIFIED_FACT",
+    "text": "Smoking tobacco is a leading cause of lung cancer worldwide.",
+    "expected": {
+      "primary_verdict": "VERIFIED_FACT",
+      "truth_score": "HIGH",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 161,
+    "category": "FALSE_FACT",
+    "text": "Elephants are the only animals that cannot jump.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 162,
+    "category": "FALSE_FACT",
+    "text": "Christopher Columbus discovered that the Earth was round.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 163,
+    "category": "FALSE_FACT",
+    "text": "Sushi is a dish that originated in Japan as a form of fast food.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 164,
+    "category": "FALSE_FACT",
+    "text": "The Great Wall of China was built in a single continuous construction effort.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 165,
+    "category": "FALSE_FACT",
+    "text": "Polar bears and penguins live together in the Arctic.",
+    "expected": {
+      "primary_verdict": "FALSE_FACT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 166,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A former intelligence analyst claims to have seen documents confirming alien diplomacy took place in 1954.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 167,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "A remote village in Bolivia reportedly has not experienced a single cancer case in over a century.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 168,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "Researchers in Japan claim to have developed a material that becomes harder under stress at a quantum level.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 169,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "An archaeologist claims to have found tools in a cave in Spain that predate known human habitation in Europe by 100,000 years.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 170,
+    "category": "UNVERIFIED_CLAIM",
+    "text": "An AI system developed privately is reported to have passed the Turing test under rigorous conditions.",
+    "expected": {
+      "primary_verdict": "UNVERIFIED_CLAIM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 171,
+    "category": "OPINION",
+    "text": "Wealth without purpose is the emptiest form of success.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 172,
+    "category": "OPINION",
+    "text": "Documentaries are more impactful than fiction in changing public opinion.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 173,
+    "category": "OPINION",
+    "text": "Children today are less resilient than children from previous generations.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 174,
+    "category": "OPINION",
+    "text": "Learning a second language should be mandatory in all primary schools.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 175,
+    "category": "OPINION",
+    "text": "Owning a home is still the most reliable path to financial security.",
+    "expected": {
+      "primary_verdict": "OPINION",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 176,
+    "category": "BIASED_CONTENT",
+    "text": "The judiciary has been completely captured by ideologues who despise ordinary law-abiding citizens.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 177,
+    "category": "BIASED_CONTENT",
+    "text": "Wall Street exists only to funnel the wealth of ordinary people upward to those who already have everything.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 178,
+    "category": "BIASED_CONTENT",
+    "text": "Unions are mob-controlled organizations that hold progress hostage for their own enrichment.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 179,
+    "category": "BIASED_CONTENT",
+    "text": "Every war in the past century has been engineered by arms manufacturers who profit from human suffering.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 180,
+    "category": "BIASED_CONTENT",
+    "text": "The left-wing academia is systematically erasing the achievements of Western civilization from textbooks.",
+    "expected": {
+      "primary_verdict": "BIASED_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 181,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "This formula was banned in Europe because it works too well for the pharmaceutical industry to allow it.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 182,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "The video they're desperately trying to delete before you see it is right here.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 183,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "This is your last warning. The window to protect your savings closes at midnight tonight.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 184,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "Every day you wait, dangerous toxins accumulate further in your bloodstream. Start the cleanse now.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 185,
+    "category": "MANIPULATIVE_CONTENT",
+    "text": "She went from broke to financially free in 90 days. Here is the exact system she used.",
+    "expected": {
+      "primary_verdict": "MANIPULATIVE_CONTENT",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 186,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Report confirms that 78% of productivity tips are read during time that could have been spent working.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 187,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Survey finds that everyone is very concerned about privacy while continuing to use every app that collects their data.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 188,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Motivational speaker urges crowd to believe in themselves more, which is exactly what his last six books also said.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 189,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Nation reassured that the economy is doing great by the same people who said that last time it wasn't.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 190,
+    "category": "SATIRE_OR_SARCASM",
+    "text": "Experts agree that the best way to deal with a complex global crisis is to post about it on social media.",
+    "expected": {
+      "primary_verdict": "SATIRE_OR_SARCASM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "LOW"
+    }
+  },
+  {
+    "id": 191,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "The global banking system is a carefully designed mechanism to keep humanity in permanent debt servitude.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 192,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Astronauts who have attempted to travel beyond low Earth orbit have been secretly turned back by a barrier.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 193,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Global population statistics are fabricated; the real number of humans alive is a fraction of what is reported.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 194,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "All major religious texts were edited in the 12th century by a centralized group to align with political goals.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 195,
+    "category": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+    "text": "Scientific consensus on evolution is a manufactured lie perpetuated to undermine spiritual awareness in populations.",
+    "expected": {
+      "primary_verdict": "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+      "truth_score": "LOW",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 196,
+    "category": "MIXED_ANALYSIS",
+    "text": "Regular dental checkups prevent serious health issues, but dentists deliberately leave minor problems to ensure return visits.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "MEDIUM"
+    }
+  },
+  {
+    "id": 197,
+    "category": "MIXED_ANALYSIS",
+    "text": "Physical activity reduces stress, but government-run public gyms embed monitoring devices in their equipment.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 198,
+    "category": "MIXED_ANALYSIS",
+    "text": "Organic farming uses fewer synthetic pesticides, though most organic certifiers are bribed to approve non-compliant farms.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "MEDIUM",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 199,
+    "category": "MIXED_ANALYSIS",
+    "text": "Journalism serves a vital democratic function, but most outlets are controlled by six families who dictate the narrative.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "HIGH",
+      "manipulation_score": "HIGH"
+    }
+  },
+  {
+    "id": 200,
+    "category": "MIXED_ANALYSIS",
+    "text": "Wearing sunscreen reduces skin cancer risk, though major brands lace their formulas with hormone-disrupting agents by design.",
+    "expected": {
+      "primary_verdict": "MIXED_ANALYSIS",
+      "truth_score": "MEDIUM",
+      "ai_likelihood": "LOW",
+      "bias_score": "LOW",
+      "manipulation_score": "HIGH"
+    }
+  }
+]
