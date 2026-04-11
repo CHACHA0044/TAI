@@ -12,6 +12,7 @@ import torch
 from PIL import Image
 from datetime import datetime, timezone
 from typing import List, Tuple, Optional
+from utils.analysis_utils import get_verdict_and_risk
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
 logger = logging.getLogger("truthguard.video")
@@ -146,6 +147,23 @@ class VideoEngine:
             confidence = self._compute_confidence(ai_scores, temporal_variance, source)
             category  = self._classify(avg_ai, avg_ela, temporal_variance, source, face_hit)
 
+            # 9.5 Rich Analysis Fields
+            enriched = get_verdict_and_risk(
+                truth_score=1.0 - avg_ai,
+                ai_score=avg_ai,
+                bias_score=0.0,
+                confidence=confidence
+            )
+            
+            # Identify suspicious frame ranges
+            suspicious_frames = [i for i, s in enumerate(ai_scores) if s > 0.6]
+            if suspicious_frames:
+                enriched["key_factors"].append(f"Anomalies detected in {len(suspicious_frames)} specific frame segments")
+            if temporal_variance > 0.02:
+                enriched["key_factors"].append("High temporal instability (flicker) indicative of deepfake frame-merging")
+            if audio_score < 0.4:
+                enriched["key_factors"].append("Synthetic audio patterns detected")
+
             elapsed = int((time.time() - start) * 1000)
             logger.info(f"Analysis done in {elapsed}ms — verdict={category}, avg_ai={avg_ai:.2f}")
 
@@ -164,6 +182,7 @@ class VideoEngine:
                 summary=scene_summary,
                 tags=tags,
                 audio_score=audio_score,
+                enriched_data=enriched,
             )
 
         finally:
@@ -517,7 +536,8 @@ class VideoEngine:
     def _build_result(
         self, category, source, ai_score, ela_score, temporal_variance,
         face_hit, frames_analysed, video_meta, confidence, elapsed_ms,
-        signals, frame_scores=None, summary="", tags=None, audio_score=None
+        signals, frame_scores=None, summary="", tags=None, audio_score=None,
+        enriched_data=None
     ) -> dict:
         explanation = self._generate_explanation(
             category, source, ai_score, ela_score, temporal_variance, face_hit
@@ -558,6 +578,7 @@ class VideoEngine:
                 "summary": summary,
                 "tags": tags or []
             },
+            **(enriched_data or {}),
             "metadata": {
                 "model":        "VideoEngine-v1 + prithivMLmods/Deep-Fake-Detector-v2-Model",
                 "latency_ms":   elapsed_ms,

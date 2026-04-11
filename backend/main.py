@@ -165,6 +165,11 @@ class AnalysisResponse(BaseModel):
     audio_score: Optional[float] = None
     news_consistency_score: Optional[float] = None
     ocr_text: Optional[str] = None
+    # Rich analysis fields
+    verdict: str = "Inconclusive"
+    risk_level: str = "Medium"
+    recommendation: str = "Verify against trusted sources."
+    key_factors: List[str] = []
 
 class JobResponse(BaseModel):
     status: str

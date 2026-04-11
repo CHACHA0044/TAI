@@ -5,6 +5,7 @@ import os
 import time
 import logging
 from datetime import datetime, timezone
+from utils.analysis_utils import get_verdict_and_risk
 
 logger = logging.getLogger("truthguard")
 
@@ -333,7 +334,16 @@ class InferenceEngine:
             final_truth_score = self._sanitize(final_truth_score * 0.9)
 
         # Confidence: distance of final truth from the midpoint, clamped to [0.4, 0.95]
-        confidence = self._sanitize(0.4 + 0.55 * abs(final_truth_score - 0.5) * 2)
+        uncertainty_penalty = 0.0
+        if not verification_signals:
+            uncertainty_penalty += 0.1
+        
+        confidence = self._sanitize(0.4 + 0.55 * abs(final_truth_score - 0.5) * 2 - uncertainty_penalty)
+
+        # 5.5 Enriched analysis (Verdict, Risk, etc)
+        enriched = get_verdict_and_risk(
+            final_truth_score, ai_generated_score, bias_score, confidence
+        )
 
         elapsed_ms = int((time.time() - start_time) * 1000)
         logger.info(f"Analysis complete in {elapsed_ms}ms")
@@ -373,6 +383,7 @@ class InferenceEngine:
             },
             "signals": signals,
             **({"news_consistency_score": round(news_consistency_score, 2)} if is_news_relevant else {}),
+            **enriched,
             "metadata": {
                 "model": "roberta-finetuned + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
@@ -382,22 +393,28 @@ class InferenceEngine:
 
     def _generate_explanation(self, truth, ai, bias, features):
         parts = []
-        if truth > 0.7:
+        if truth > 0.85:
+            parts.append("The content demonstrates exceptionally high factual alignment with verified source networks.")
+        elif truth > 0.7:
             parts.append("The content aligns well with verified factual datasets.")
-        elif truth < 0.3:
-            parts.append("Severe factual inconsistencies detected against cross-referenced news signals.")
+        elif truth < 0.2:
+            parts.append("CRITICAL: Significant factual contradictions detected against multiple independent verifiers.")
+        elif truth < 0.35:
+            parts.append("Factual inconsistencies detected against cross-referenced news signals.")
         else:
-            parts.append("Factual status is ambiguous or requires more context.")
+            parts.append("Factual status is ambiguous or lacks sufficient external supporting evidence.")
 
         ppl = features.get("perplexity", 0)
-        if ai > 0.7:
-            parts.append(
-                f"Stylometric patterns (perplexity: {ppl:.1f}) indicate high probability of AI generation."
-            )
-        elif ai < 0.3:
-            parts.append("Lexical diversity and sentence variance align with human authorship.")
+        div = features.get("lexical_diversity", 0.5)
+        
+        if ai > 0.85:
+            parts.append(f"Highly suspect stylometric markers (perplexity: {ppl:.1f}) strongly suggest machine-generation.")
+        elif ai > 0.7:
+            parts.append(f"Syntactic patterns indicate a high probability of AI assisted authorship.")
+        elif ai < 0.3 and div > 0.4:
+            parts.append("Natural lexical diversity and sentence variance align with authentic human authorship.")
 
         if bias > 0.7:
-            parts.append("Language patterns suggest a strong slant or manipulative framing.")
+            parts.append("Language patterns suggest a strong slant or potential manipulative framing designed to provoke response.")
 
         return " ".join(parts)

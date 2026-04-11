@@ -6,6 +6,7 @@ import time
 import logging
 from datetime import datetime, timezone
 import io
+from utils.analysis_utils import get_verdict_and_risk
 
 logger = logging.getLogger("truthguard")
 
@@ -148,6 +149,17 @@ class ImageEngine:
                 
             logger.info(f"Detected potential source: {source}")
 
+            # 3.5 Forensics Analysis
+            key_factors = []
+            if source != "Unknown":
+                key_factors.append(f"Source markers identified: {source}")
+            if neural_score > 0.75:
+                key_factors.append("Neural scan detected significant synthetic artifacts")
+            if ela_suspicion > 0.6:
+                key_factors.append("High ELA compression anomalies detected (pixel-level manipulation)")
+            elif ela_suspicion > 0.4:
+                key_factors.append("Partial compression inconsistencies suggestive of editing")
+
             # 4. Classification Logic
             category = "REAL"
             ai_generated_score = neural_score
@@ -170,9 +182,17 @@ class ImageEngine:
             if ocr_text:
                 logger.info(f"OCR extracted {len(ocr_text)} chars of text from image")
 
-            # 6. Build Explanation
-            explanation = self._generate_detailed_explanation(category, source, neural_score, ela_suspicion, metadata)
-            
+            # 6. Build Enriched Verdict
+            # Mapping image scores to truth_score (1 - ai) and using neural_score as ai_score
+            enriched = get_verdict_and_risk(
+                truth_score=1.0 - ai_generated_score,
+                ai_score=ai_generated_score,
+                bias_score=0.0,
+                confidence=confidence if category != "AI_GENERATED" or source == "Unknown" else 0.98
+            )
+            # Merge key factors
+            enriched["key_factors"] = list(set(enriched["key_factors"] + key_factors))
+
             elapsed_ms = int((time.time() - start_time) * 1000)
             logger.info(f"Analysis finished in {elapsed_ms}ms — verdict: {category}")
 
@@ -184,7 +204,8 @@ class ImageEngine:
                 "bias_score": 0.0,
                 "credibility_score": round(max(0.0, min(1.0, 1.0 - ela_suspicion)), 2),
                 "confidence_score": round(max(0.0, min(1.0, confidence if category != "AI_GENERATED" or source == "Unknown" else 0.98)), 2),
-                "explanation": explanation,
+                "explanation": self._generate_detailed_explanation(category, source, neural_score, ela_suspicion, metadata),
+                **enriched,
                 "features": {
                     "perplexity": ela_suspicion,
                     "stylometry": {
