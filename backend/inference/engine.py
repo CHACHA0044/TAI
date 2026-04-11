@@ -353,9 +353,12 @@ Return valid JSON ONLY (no markdown blocks):
         support = float(np.mean([s.get("retrieval_support_score", s.get("match_score", 0.0)) for s in verification_signals]))
         contradiction = float(np.mean([s.get("retrieval_contradiction_score", 0.0) for s in verification_signals]))
         buckets = [s.get("trust_agent_confidence", "inconclusive") for s in verification_signals]
+        # Contradiction threshold remains strict; support threshold is softened to match
+        # the calibrated VERIFIED_SUPPORT_THRESHOLD (0.60) so trust_agent_confidence
+        # can reflect "support" at a lower bar than before.
         if "contradiction" in buckets and contradiction >= 0.72:
             confidence = "contradiction"
-        elif "support" in buckets and support >= 0.56:
+        elif "support" in buckets and support >= 0.60:
             confidence = "support"
         else:
             confidence = "inconclusive"
@@ -629,6 +632,10 @@ Return valid JSON ONLY (no markdown blocks):
         
         confidence = self._sanitize(0.4 + 0.55 * abs(final_truth_score - 0.5) * 2 - uncertainty_penalty)
 
+        # Intermediate scores reused across routing + debug
+        sarcasm_score_val = float(sarcasm_signal.get("score", 0.0))
+        opinion_score_val = 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0
+
         # 5.5 Enriched analysis (staged verdict routing)
         routing = stage_route_primary_verdict(
             claim_type=claim_type,
@@ -643,6 +650,8 @@ Return valid JSON ONLY (no markdown blocks):
             manipulation_score=manipulation_score,
             conspiracy_flag=conspiracy_flag,
             ai_generated_score=ai_generated_score,
+            sarcasm_score=sarcasm_score_val,
+            opinion_score=opinion_score_val,
         )
         primary_verdict = routing["primary_verdict"]
         risk_level = "Medium"
@@ -677,8 +686,8 @@ Return valid JSON ONLY (no markdown blocks):
             "ai_likelihood_blended": round(ai_generated_score, 4),
             "bias_model_raw": round(bias_score, 4),
             "external_credibility_mean": round(avg_external_cred, 4),
-            "sarcasm_score": round(float(sarcasm_signal.get("score", 0.0)), 4),
-            "opinion_score": 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0,
+            "sarcasm_score": round(sarcasm_score_val, 4),
+            "opinion_score": round(opinion_score_val, 4),
             "claim_verifiable": bool(verifiability.get("claim_verifiable", True)),
             "opinion_detected": bool(verifiability.get("opinion_detected", False)),
             "verifiability_reason": verifiability.get("reason", "unknown"),
@@ -699,8 +708,8 @@ Return valid JSON ONLY (no markdown blocks):
             "ai_likelihood": int(round(ai_generated_score * 100)),
             "bias_score": int(round(bias_score * 100)),
             "manipulation_score": int(round(manipulation_score * 100)),
-            "sarcasm_score": int(round(float(sarcasm_signal.get("score", 0.0)) * 100)),
-            "opinion_score": int(100 if bool(verifiability.get("opinion_detected", False)) else 0),
+            "sarcasm_score": int(round(sarcasm_score_val * 100)),
+            "opinion_score": int(round(opinion_score_val * 100)),
             "sarcasm": sarcasm_detected,
             "conspiracy_flag": conspiracy_flag,
         }
@@ -711,8 +720,8 @@ Return valid JSON ONLY (no markdown blocks):
             "ai_likelihood": to_bucket(ai_generated_score),
             "bias_score": to_bucket(bias_score),
             "manipulation_score": to_bucket(manipulation_score),
-            "sarcasm_score": to_bucket(float(sarcasm_signal.get("score", 0.0))),
-            "opinion_score": to_bucket(1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0),
+            "sarcasm_score": to_bucket(sarcasm_score_val),
+            "opinion_score": to_bucket(opinion_score_val),
         }
 
         debug = {
@@ -729,14 +738,31 @@ Return valid JSON ONLY (no markdown blocks):
             "detector_fired_first": routing.get("triggered_rule", "unknown"),
             "why_verdict_chosen": routing.get("why_verdict_chosen", ""),
             "final_rule_triggered": routing.get("triggered_rule"),
+            # Calibration-visibility fields (per problem statement requirements)
+            "threshold_values_used": routing.get("threshold_values_used", {}),
+            "detector_confidences": {
+                "truth_score": round(float(final_truth_score), 4),
+                "ai_likelihood": round(float(ai_generated_score), 4),
+                "bias_score": round(float(bias_score), 4),
+                "manipulation_score": round(float(manipulation_score), 4),
+                "sarcasm_score": round(sarcasm_score_val, 4),
+                "opinion_score": round(opinion_score_val, 4),
+                "retrieval_support": round(trust_summary["retrieval_support_score"], 4),
+                "retrieval_contradiction": round(trust_summary["retrieval_contradiction_score"], 4),
+            },
+            "trust_support_margin": routing.get("trust_support_margin", 0.0),
+            "contradiction_margin": routing.get("contradiction_margin", 0.0),
+            "sarcasm_rule_hits": sarcasm_signal.get("sarcasm_rule_hits", []),
+            "bias_rule_hits": bias_signal.get("bias_rule_hits", []),
+            "manipulation_rule_hits": manipulation_signal.get("manipulation_rule_hits", []),
             "raw_intermediate_scores": {
                 "truth_score": round(float(final_truth_score), 4),
                 "verifiability": round(verifiability_score, 4),
                 "ai_likelihood_score": round(float(ai_generated_score), 4),
                 "bias_score": round(float(bias_score), 4),
                 "manipulation_score": round(float(manipulation_score), 4),
-                "sarcasm_score": round(float(sarcasm_signal.get("score", 0.0)), 4),
-                "opinion_score": 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0,
+                "sarcasm_score": round(sarcasm_score_val, 4),
+                "opinion_score": round(opinion_score_val, 4),
                 "conspiracy_flag": bool(conspiracy_flag),
                 "claim_type": claim_type,
             },

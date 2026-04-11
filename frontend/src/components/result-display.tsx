@@ -154,15 +154,17 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           </>
         )}
         
+        {!result.category && (
           <ScoreCard 
-            label={result.category ? "AI Artifact Score" : "AI Likelihood"}
+            label="AI Likelihood"
             score={result.dimensions ? result.dimensions.ai_likelihood / 100 : result.ai_generated_score} 
             icon={<BrainCircuit className="w-4 h-4 text-rose-400" />}
-            description={result.category ? "Neural network probability that content is synthetic." : "Likelihood content was machine-generated."}
+            description="Likelihood content was machine-generated."
             invertColor
             onClick={() => setActiveMetric(activeMetric === "ai" ? null : "ai")}
-            clickable={!result.category}
+            clickable
           />
+        )}
 
         {!result.category && (
           <ScoreCard 
@@ -404,6 +406,12 @@ function ScoreCard({
   onClick?: () => void;
   clickable?: boolean;
 }) {
+  // Hide cards where the score is below 15% — low scores add visual noise without value.
+  // For inverted metrics (bias, AI, manipulation, etc.) we check the raw score since
+  // high raw = bad; the threshold still applies to the raw value to suppress near-zero
+  // signals that are uninformative either way.
+  if (score < 0.15) return null;
+
   // For AI/Bias scores, high = bad (red). For Truth/ELA/credibility, high = good (green).
   const getColor = () => {
     const v = invertColor ? 1 - score : score;
