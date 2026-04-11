@@ -25,3 +25,5 @@ librosa
 protobuf
 sentencepiece
 tiktoken
+pymongo
+motor

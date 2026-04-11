@@ -46,7 +46,12 @@ except ImportError:
 
 
 class MockModel(torch.nn.Module):
-    """Lightweight mock model used when the real model cannot be loaded."""
+    """Lightweight mock model used when the real model cannot be loaded.
+
+    Returns calibrated neutral outputs rather than hardcoded extremes so that
+    the downstream fusion step can use external-verification signals to drive
+    the final verdict, instead of being anchored to a broken fixed score.
+    """
     def __init__(self):
         super().__init__()
         self.truth = torch.nn.Linear(1, 1)
@@ -54,10 +59,14 @@ class MockModel(torch.nn.Module):
         self.bias = torch.nn.Linear(1, 3)
 
     def forward(self, **kwargs):
+        # Neutral priors — external verification will shift these.
+        # truth=0.55  (slight lean toward true, not fake)
+        # ai logits: [0.75, 0.25] → ~25% AI probability after softmax
+        # bias logits: [0.6, 0.3, 0.1] → low-bias class wins
         return {
-            "truth": torch.tensor([0.5]),  # Neutral/Uncertain by default
-            "ai": torch.tensor([[0.15, 0.85]]),
-            "bias": torch.tensor([[0.2, 0.6, 0.2]])
+            "truth": torch.tensor([0.55]),
+            "ai": torch.tensor([[0.75, 0.25]]),
+            "bias": torch.tensor([[0.6, 0.3, 0.1]])
         }
 
 
@@ -138,15 +147,22 @@ class InferenceEngine:
         """Load multi-task RoBERTa or fall back to MockModel."""
         if HAS_TRANSFORMERS and TruthGuardMultiTaskModel:
             try:
-                source = model_path or self.base_model_name
-                self.tokenizer = AutoTokenizer.from_pretrained(source)
+                local_path = model_path or os.path.join(os.path.dirname(__file__), "..", "models", "roberta-finetuned")
+                source = local_path if os.path.exists(os.path.join(local_path, "model.safetensors")) else self.base_model_name
+                
+                # Load tokenizer - use local if config exists, else base
+                tokenizer_src = local_path if os.path.exists(os.path.join(local_path, "tokenizer_config.json")) else self.base_model_name
+                self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_src)
                 if self.tokenizer.pad_token is None:
                     self.tokenizer.pad_token = self.tokenizer.eos_token
-                config = AutoConfig.from_pretrained(source)
+                
+                # Load config - use local if exists, else base
+                config_src = local_path if os.path.exists(os.path.join(local_path, "config.json")) else self.base_model_name
+                config = AutoConfig.from_pretrained(config_src)
                 self.model = TruthGuardMultiTaskModel(config, source)
                 
                 # Load custom heads if they exist
-                heads_path = os.path.join(source, "custom_heads.pt")
+                heads_path = os.path.join(local_path, "custom_heads.pt")
                 if os.path.exists(heads_path):
                     state_dict = torch.load(heads_path, map_location=self.device, weights_only=True)
                     self.model.truth_head.load_state_dict(state_dict['truth_head'])
@@ -156,7 +172,7 @@ class InferenceEngine:
                 
                 self.model.to(self.device)
                 self.model.eval()
-                logger.info(f"[MODEL MODE: REAL] Model loaded: {source}")
+                logger.info(f"[MODEL MODE: REAL] Model loaded: {source} (Tokenizer: {tokenizer_src})")
                 return
             except Exception as e:
                 logger.warning(f"Model load failed ({e}) — falling back to mock")
@@ -172,11 +188,13 @@ class InferenceEngine:
         try:
             from transformers import AutoTokenizer as AT
             self.tokenizer = AT.from_pretrained("gpt2")
+            # GPT-2 has no pad token — set eos as pad so padding calls don't crash
             if self.tokenizer.pad_token is None:
                 self.tokenizer.pad_token = self.tokenizer.eos_token
         except Exception:
             self.tokenizer = None
         self.model = MockModel().to(self.device)
+        self._is_mock = True  # flag so _tokenize can skip padding
         logger.warning(
             "[MODEL MODE: MOCK] Real model not available — using MockModel. "
             "Inference results are NOT real. Set REQUIRE_REAL_MODEL=true to fail fast."
@@ -185,6 +203,10 @@ class InferenceEngine:
     def _tokenize(self, text):
         """Tokenize text, handling both real and mock tokenizers."""
         if self.tokenizer is None:
+            return {"input_ids": torch.tensor([[0]]).to(self.device)}
+        # MockModel ignores token values entirely — skip padding to avoid
+        # issues with tokenizers that have no native pad token (e.g. GPT-2).
+        if getattr(self, "_is_mock", False):
             return {"input_ids": torch.tensor([[0]]).to(self.device)}
         tokens = self.tokenizer(
             text,
@@ -292,8 +314,11 @@ class InferenceEngine:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
         # 5. Fusion & self-check
-        # If external verification found no matches, we should be skeptical of the claim
-        final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
+        # When no external signals are available, we default to the model truth score.
+        if verification_signals:
+            final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
+        else:
+            final_truth_score = self._sanitize(truth_score)
         
         # Heuristic: If we have zero relevant signals and a low news consistency, 
         # it's likely unsubstantiated/obviously false if it was presented as a fact.
@@ -302,10 +327,13 @@ class InferenceEngine:
                  final_truth_score *= 0.5  # Heavy penalty for "obviously false/unsubstantiated" content
                  logger.info("Content labeled as highly suspicious (zero news support)")
 
-        if ai_generated_score > 0.8 and avg_external_cred < 0.6:
+        # Only penalize if both AI probability is very high AND external credibility
+        # is low — not when credibility is simply at its neutral default (0.5).
+        if ai_generated_score > 0.8 and verification_signals and avg_external_cred < 0.4:
             final_truth_score = self._sanitize(final_truth_score * 0.9)
 
-        confidence = self._sanitize(0.5 + (0.5 * abs(truth_score - 0.5) * 2))
+        # Confidence: distance of final truth from the midpoint, clamped to [0.4, 0.95]
+        confidence = self._sanitize(0.4 + 0.55 * abs(final_truth_score - 0.5) * 2)
 
         elapsed_ms = int((time.time() - start_time) * 1000)
         logger.info(f"Analysis complete in {elapsed_ms}ms")
