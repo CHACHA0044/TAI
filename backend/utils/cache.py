@@ -1,7 +1,12 @@
 import os
 import json
-import redis
 import logging
+
+try:
+    import redis
+    HAS_REDIS = True
+except ImportError:
+    HAS_REDIS = False
 
 logger = logging.getLogger("truthguard.cache")
 
@@ -9,6 +14,8 @@ logger = logging.getLogger("truthguard.cache")
 _redis_client = None
 
 def get_redis():
+    if not HAS_REDIS:
+        return None
     global _redis_client
     if _redis_client is None:
         redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379/0")

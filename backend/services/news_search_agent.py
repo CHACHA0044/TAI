@@ -30,8 +30,25 @@ class NewsSearchAgent:
     GNEWS_API_URL = "https://gnews.io/api/v4/search"
 
     MOCK_HEADLINES: List[str] = [
+        # Science / Physics
+        "Water boils at 100 degrees Celsius at sea level, scientists confirm.",
+        "New study reaffirms that the Earth revolves around the Sun in approximately 365 days.",
+        "Humans require oxygen to survive; deprivation causes rapid organ failure.",
+        "Researchers verify that the Pacific Ocean is the largest ocean on Earth.",
+        "Speed of light in vacuum confirmed at approximately 299,792 kilometres per second.",
+        "Gravity pulls all objects toward Earth at 9.8 metres per second squared.",
+        # Biology / Health
+        "Clinical guidelines confirm vaccines are safe and effective against infectious disease.",
+        "Health authorities report that regular exercise reduces risk of cardiovascular disease.",
+        "DNA double-helix structure discovery credited to Watson and Crick in 1953.",
+        "Human body contains approximately 206 bones, medical consensus confirms.",
+        # Geography / World
+        "Mount Everest is the highest peak above sea level at 8,849 metres.",
+        "Africa is the second-largest continent by both area and population.",
+        "The Amazon River carries more freshwater than any other river on Earth.",
+        # General news / Politics
         "Official reports confirm no evidence of widespread election fraud.",
-        "Scientists reveal new study on climate change impact in the Arctic.",
+        "Scientists reveal new study on climate change impact globally.",
         "Economic indicators show steady growth in the tech sector.",
         "Government spokesperson denies rumors of secret government programs.",
         "Researchers publish peer-reviewed findings on vaccine safety.",

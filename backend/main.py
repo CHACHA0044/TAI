@@ -3,9 +3,9 @@ import os
 import tempfile
 import uuid as _uuid
 
-# Hugging Face cache - prefer environment variable, default to /app cache
+# Hugging Face cache - prefer environment variable, default to local project cache
 if "HF_HOME" not in os.environ:
-    os.environ["HF_HOME"] = "/app/.cache/huggingface"
+    os.environ["HF_HOME"] = os.path.join(os.path.dirname(__file__), ".cache", "huggingface")
 import sys
 import time
 
@@ -14,12 +14,25 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, List, Union
 import uvicorn
-from celery.result import AsyncResult
+
+# Celery / Redis are optional — only needed for async video processing.
+# Text, URL and image analysis work without them.
+try:
+    from celery.result import AsyncResult
+    from celery_app import celery_app
+    from inference.tasks import process_video_task
+    HAS_CELERY = True
+except ImportError:
+    HAS_CELERY = False
+    logger_boot = logging.getLogger("truthguard")
+    logger_boot.warning(
+        "celery not installed — async video processing disabled. "
+        "Install with: pip install celery redis"
+    )
 
 from utils.cache import get_cached_result, set_cached_result
 from utils.hashing import get_content_hash, get_text_hash
-from celery_app import celery_app
-from inference.tasks import process_video_task
+from utils.db import db
 
 # ------------------------------------------------------------------
 # Logging setup
@@ -60,6 +73,7 @@ async def on_startup():
     from services.warmup_service import start_warmup_service
     start_warmup_service()
     logger.info("Warmup service launched on startup")
+    await db.connect()
 
 # ------------------------------------------------------------------
 # Lazy engine init (avoids import-time crashes if deps are missing)
@@ -218,6 +232,8 @@ async def analyze_text(request: AnalysisRequest):
         
         # Cache set
         set_cached_result("text", content_hash, result)
+        # Persistence
+        await db.save_result("text", content_hash, result)
         return result
     except HTTPException:
         raise
@@ -242,6 +258,10 @@ async def analyze_url(request: AnalysisRequest):
         # Surface the original URL so the frontend can display it
         if original_url.startswith("http://") or original_url.startswith("https://"):
             result["source"] = original_url
+        
+        # Persistence
+        content_hash = get_text_hash(original_url) # Using URL as key for this entry
+        await db.save_result("url", content_hash, result)
         return result
     except HTTPException:
         raise
@@ -261,6 +281,10 @@ async def analyze_image(file: UploadFile = File(...)):
         contents = await file.read()
         engine = get_image_engine()
         result = engine.analyze(contents, filename=file.filename)
+        
+        # Persistence
+        content_hash = get_content_hash(contents)
+        await db.save_result("image", content_hash, result)
         return result
     except HTTPException:
         raise
@@ -269,10 +293,15 @@ async def analyze_image(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
-@app.post("/analyze-video") # Returns Union
+@app.post("/analyze-video")  # Returns Union
 async def analyze_video(file: UploadFile = File(...)):
     logger.info(f"POST /analyze-video — {file.filename} ({file.content_type})")
+
+    if not HAS_CELERY:
+        raise HTTPException(
+            status_code=503,
+            detail="Video analysis requires celery+redis. Install with: pip install celery redis"
+        )
 
     try:
         allowed = {"video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/avi"}
@@ -311,6 +340,12 @@ async def analyze_video(file: UploadFile = File(...)):
 @app.get("/jobs/{job_id}")
 async def get_job_status(job_id: str):
     """Query Celery task status."""
+    if not HAS_CELERY:
+        raise HTTPException(
+            status_code=503,
+            detail="Job status requires celery+redis. Install with: pip install celery redis"
+        )
+
     task_result = AsyncResult(job_id, app=celery_app)
     
     if task_result.state == "SUCCESS":

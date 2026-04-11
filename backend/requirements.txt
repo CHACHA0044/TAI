@@ -22,3 +22,7 @@ celery
 redis
 pytesseract
 librosa
+pymongo
+motor
+protobuf
+sentencepiece
