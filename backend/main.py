@@ -46,7 +46,8 @@ if frontend_url != "*":
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    # Credentials (cookies/auth headers) must NOT be sent with wildcard origins
+    allow_credentials=(frontend_url != "*"),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -236,6 +237,9 @@ async def analyze_url(request: AnalysisRequest):
                 status_code=400,
                 detail="Could not extract content from URL. Please paste text manually.",
             )
+        # Surface the original URL so the frontend can display it
+        if content.startswith("http://") or content.startswith("https://"):
+            result["source"] = content
         return result
     except HTTPException:
         raise
@@ -256,6 +260,8 @@ async def analyze_image(file: UploadFile = File(...)):
         engine = get_image_engine()
         result = engine.analyze(contents, filename=file.filename)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Error during image analysis")
         raise HTTPException(status_code=500, detail=str(e))

@@ -1,6 +1,9 @@
 import trafilatura
 from bs4 import BeautifulSoup
 import requests
+import logging
+
+logger = logging.getLogger("truthguard")
 
 def extract_content(url_or_text):
     """
@@ -8,7 +11,7 @@ def extract_content(url_or_text):
     Extracts content if URL, otherwise returns text.
     """
     if url_or_text.startswith("http://") or url_or_text.startswith("https://"):
-        print(f"Extracting content from URL: {url_or_text}")
+        logger.info(f"Extracting content from URL: {url_or_text}")
         downloaded = trafilatura.fetch_url(url_or_text)
         if downloaded:
             content = trafilatura.extract(downloaded)
