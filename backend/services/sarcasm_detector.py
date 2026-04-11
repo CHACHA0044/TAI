@@ -49,7 +49,7 @@ _RHETORICAL_FRAMING_PATTERNS = [
 
 # Ironic praise followed by an absurd/negative qualifier
 _IRONIC_PRAISE_PATTERNS = [
-    r"\bgreat\b.{0,30}\b(disaster|fail|mess|disaster|chaos)\b",
+    r"\bgreat\b.{0,30}\b(disaster|fail|mess|chaos)\b",
     r"\bbrilliant\b.{0,30}\b(idiot|moron|fool|disaster)\b",
     r"\bwonderful\b.{0,30}\b(fail|disaster|collapse|ruin)\b",
     r"\bthanks\s+(a\s+lot|so\s+much)\b.{0,30}\b(for\s+nothing|ruined|destroyed|broke)\b",

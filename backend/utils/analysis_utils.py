@@ -27,6 +27,21 @@ MANIPULATION_VERDICT_THRESHOLD = 0.65
 # AI-likelihood threshold — ONLY route LIKELY_AI_GENERATED above this level
 AI_VERDICT_THRESHOLD = 0.95
 
+# ---------------------------------------------------------------------------
+# Mixed-claim guard constants
+# ---------------------------------------------------------------------------
+# A score above MIXED_SIGNAL_MEDIUM_THRESHOLD on a secondary detector is
+# considered "medium-strength" — present but not dominant.  Two or more such
+# signals on different dimensions indicate genuinely multi-modal text that
+# should not be collapsed into a single-category verdict.
+MIXED_SIGNAL_MEDIUM_THRESHOLD = 0.40
+# Sarcasm uses a lower bar (0.35) because the sarcasm detector already has a
+# conservative threshold internally; signals above 0.35 are already meaningful.
+MIXED_SARCASM_MEDIUM_THRESHOLD = 0.35
+# Minimum number of medium-strength cross-dimension signals required before
+# MIXED_ANALYSIS is preferred over forcing a single-category verdict.
+MIXED_SIGNAL_COUNT_REQUIRED = 2
+
 
 def to_bucket(score: float) -> str:
     if score >= 0.70:
@@ -159,15 +174,22 @@ def stage_route_primary_verdict(
         )
 
     # Stage 5 — Mixed-claim guard: multiple medium-to-high signals with no clear winner
-    # Prefer MIXED_ANALYSIS over forcing a single category on multi-clause / nuanced text
+    # Prefer MIXED_ANALYSIS over forcing a single category on multi-clause / nuanced text.
+    # Uses MIXED_SIGNAL_MEDIUM_THRESHOLD (0.40) as the "medium-strength" bar for each
+    # dimension; sarcasm uses MIXED_SARCASM_MEDIUM_THRESHOLD (0.35) because the sarcasm
+    # detector already applies a conservative internal threshold.
     signal_count = sum([
-        bias_score >= 0.40,
-        manipulation_score >= 0.40,
-        sarcasm_score >= 0.35,
-        opinion_score >= 0.40,
+        bias_score >= MIXED_SIGNAL_MEDIUM_THRESHOLD,
+        manipulation_score >= MIXED_SIGNAL_MEDIUM_THRESHOLD,
+        sarcasm_score >= MIXED_SARCASM_MEDIUM_THRESHOLD,
+        opinion_score >= MIXED_SIGNAL_MEDIUM_THRESHOLD,
         claim_type == "MIXED",
     ])
-    if signal_count >= 2 and bias_score < BIAS_VERDICT_THRESHOLD and manipulation_score < MANIPULATION_VERDICT_THRESHOLD:
+    if (
+        signal_count >= MIXED_SIGNAL_COUNT_REQUIRED
+        and bias_score < BIAS_VERDICT_THRESHOLD
+        and manipulation_score < MANIPULATION_VERDICT_THRESHOLD
+    ):
         return _base(
             "MIXED_ANALYSIS",
             "STAGE_4_MIXED_MULTI_SIGNAL",
