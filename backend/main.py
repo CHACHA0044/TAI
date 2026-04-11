@@ -285,8 +285,18 @@ async def analyze_video(file: UploadFile = File(...)):
         if cached:
             return {"status": "complete", "result": cached}
 
-        # 2. Async Queueing
-        task = process_video_task.delay(contents, file.filename or "upload.mp4", content_hash)
+        # 2. Save upload to a temp file and queue only its path — never broker raw bytes.
+        #    This avoids JSON-serialisation failures and huge Redis memory usage.
+        import tempfile, uuid as _uuid
+        tmp_dir = tempfile.gettempdir()
+        ext = os.path.splitext(file.filename or "upload.mp4")[1] or ".mp4"
+        tmp_path = os.path.join(tmp_dir, f"tg_upload_{_uuid.uuid4().hex}{ext}")
+        with open(tmp_path, "wb") as fh:
+            fh.write(contents)
+        logger.info(f"Upload saved to temp path: {tmp_path}")
+
+        # 3. Async Queueing — pass path + hash only, not bytes
+        task = process_video_task.delay(tmp_path, file.filename or "upload.mp4", content_hash)
         logger.info(f"Video analysis queued — task_id: {task.id}")
 
         return {"status": "processing", "job_id": task.id}

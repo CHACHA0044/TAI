@@ -179,11 +179,11 @@ class ImageEngine:
             result = {
                 "category": category,
                 "source": source,
-                "truth_score": 0.0,
-                "ai_generated_score": round(ai_generated_score, 2),
+                "truth_score": round(max(0.0, min(1.0, 1.0 - ai_generated_score)), 2),
+                "ai_generated_score": round(max(0.0, min(1.0, ai_generated_score)), 2),
                 "bias_score": 0.0,
-                "credibility_score": round(1.0 - ela_suspicion, 2),
-                "confidence_score": round(confidence if category != "AI_GENERATED" or source == "Unknown" else 0.98, 2),
+                "credibility_score": round(max(0.0, min(1.0, 1.0 - ela_suspicion)), 2),
+                "confidence_score": round(max(0.0, min(1.0, confidence if category != "AI_GENERATED" or source == "Unknown" else 0.98)), 2),
                 "explanation": explanation,
                 "features": {
                     "perplexity": ela_suspicion,

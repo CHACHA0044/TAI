@@ -153,10 +153,17 @@ class InferenceEngine:
                 
                 self.model.to(self.device)
                 self.model.eval()
-                logger.info(f"Model loaded: {source}")
+                logger.info(f"[MODEL MODE: REAL] Model loaded: {source}")
                 return
             except Exception as e:
                 logger.warning(f"Model load failed ({e}) — falling back to mock")
+
+        # Check if production requires a real model
+        if os.getenv("REQUIRE_REAL_MODEL", "").lower() in ("1", "true", "yes"):
+            raise RuntimeError(
+                "REQUIRE_REAL_MODEL is set but no real model could be loaded. "
+                "Ensure model weights exist at backend/models/roberta-finetuned."
+            )
 
         # Fallback
         try:
@@ -165,7 +172,10 @@ class InferenceEngine:
         except Exception:
             self.tokenizer = None
         self.model = MockModel().to(self.device)
-        logger.info("Using MockModel")
+        logger.warning(
+            "[MODEL MODE: MOCK] Real model not available — using MockModel. "
+            "Inference results are NOT real. Set REQUIRE_REAL_MODEL=true to fail fast."
+        )
 
     def _tokenize(self, text):
         """Tokenize text, handling both real and mock tokenizers."""

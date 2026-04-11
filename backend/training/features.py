@@ -11,10 +11,12 @@ class FeatureExtractor:
         # Load small spacy model for NLP features
         try:
             self.nlp = spacy.load("en_core_web_sm")
-        except:
-            # Install spacy model if missing
-            os.system("python -m spacy download en_core_web_sm")
-            self.nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            raise RuntimeError(
+                "spaCy model 'en_core_web_sm' is not installed. "
+                "Pre-install it in your container image with: "
+                "python -m spacy download en_core_web_sm"
+            )
         
         # Load GPT-2 for perplexity scoring
         self.ppl_model_name = "gpt2"
