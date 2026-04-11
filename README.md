@@ -1,3 +1,13 @@
+---
+title: TruthGuard AI Backend
+emoji: 🛡️
+colorFrom: purple
+colorTo: pink
+sdk: docker
+pinned: false
+app_port: 7860
+---
+
 # TAI - Trust & Authenticity Intelligence 🛡️
 
 TAI is a state-of-the-art platform designed to combat misinformation and AI-generated deception. By leveraging a multi-task learning architecture based on **RoBERTa**, it provides a "Trust Score" for digital content based on veracity, origin, and bias.
