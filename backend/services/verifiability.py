@@ -1,6 +1,8 @@
 import re
 from typing import Dict, Any
 
+from services.claim_type_detector import classify_claim_type
+
 
 SUBJECTIVE_PATTERNS = [
     r"\bi think\b",
@@ -21,15 +23,27 @@ MARKETING_PATTERNS = [
 ]
 
 RECENCY_LOCAL_PATTERNS = [
-    r"\btoday\b",
-    r"\byesterday\b",
     r"\bjust now\b",
     r"\blocal\b",
     r"\bmy city\b",
     r"\bmy town\b",
 ]
 
-MIN_WORDS_FOR_VERIFIABILITY = 8
+SPECULATION_PATTERNS = [
+    r"\bmay\b",
+    r"\bmight\b",
+    r"\bcould\b",
+    r"\bclaims? to\b",
+    r"\bexpected to\b",
+    r"\bpossible\b",
+]
+
+FACTUAL_STRUCTURE_PATTERNS = [
+    r"\b(is|are|was|were|has|have)\b.+\b(in|at|on|from)\b",
+    r"\bhas \d+\b",
+]
+
+MIN_WORDS_FOR_VERIFIABILITY = 6
 YEAR_PATTERN = r"\b\d{4}\b"
 PERCENTAGE_PATTERN = r"\b\d+%"
 SOURCE_CITATION_PATTERN = r"\baccording to\b"
@@ -37,21 +51,24 @@ STUDY_PATTERN = r"\bstudy\b"
 REPORT_PATTERN = r"\breport\b"
 
 
-def assess_claim_verifiability(text: str) -> Dict[str, Any]:
+def assess_claim_verifiability(text: str, claim_type: str = "") -> Dict[str, Any]:
     content = (text or "").strip()
     normalized = content.lower()
+    inferred_claim_type = claim_type or classify_claim_type(content).get("claim_type", "MIXED")
     if not content:
         return {
             "claim_verifiable": False,
             "opinion_detected": False,
             "reason": "empty_content",
+            "claim_type": inferred_claim_type,
         }
 
-    if any(re.search(pattern, normalized) for pattern in SUBJECTIVE_PATTERNS):
+    if inferred_claim_type == "OPINION" or any(re.search(pattern, normalized) for pattern in SUBJECTIVE_PATTERNS):
         return {
             "claim_verifiable": False,
             "opinion_detected": True,
             "reason": "subjective_statement",
+            "claim_type": inferred_claim_type,
         }
 
     if any(re.search(pattern, normalized) for pattern in MARKETING_PATTERNS):
@@ -59,6 +76,15 @@ def assess_claim_verifiability(text: str) -> Dict[str, Any]:
             "claim_verifiable": False,
             "opinion_detected": False,
             "reason": "marketing_or_promotional_claim",
+            "claim_type": inferred_claim_type,
+        }
+
+    if inferred_claim_type == "UNVERIFIABLE_SPECULATION" or any(re.search(pattern, normalized) for pattern in SPECULATION_PATTERNS):
+        return {
+            "claim_verifiable": False,
+            "opinion_detected": False,
+            "reason": "speculative_or_unconfirmed_claim",
+            "claim_type": inferred_claim_type,
         }
 
     if any(re.search(pattern, normalized) for pattern in RECENCY_LOCAL_PATTERNS):
@@ -66,6 +92,7 @@ def assess_claim_verifiability(text: str) -> Dict[str, Any]:
             "claim_verifiable": False,
             "opinion_detected": False,
             "reason": "recent_or_local_hard_to_source_claim",
+            "claim_type": inferred_claim_type,
         }
 
     has_verifiable_signal = any(
@@ -78,10 +105,14 @@ def assess_claim_verifiability(text: str) -> Dict[str, Any]:
             REPORT_PATTERN,
         ]
     )
+    has_factual_structure = any(re.search(pattern, normalized) for pattern in FACTUAL_STRUCTURE_PATTERNS)
+    claim_verifiable = has_verifiable_signal or has_factual_structure or len(content.split()) >= MIN_WORDS_FOR_VERIFIABILITY
+
     return {
-        "claim_verifiable": has_verifiable_signal or len(content.split()) > MIN_WORDS_FOR_VERIFIABILITY,
+        "claim_verifiable": claim_verifiable,
         "opinion_detected": False,
         "reason": "likely_verifiable"
-        if has_verifiable_signal or len(content.split()) > MIN_WORDS_FOR_VERIFIABILITY
+        if claim_verifiable
         else "insufficient_factual_signal",
+        "claim_type": inferred_claim_type,
     }

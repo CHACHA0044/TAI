@@ -10,6 +10,14 @@ export interface AnalysisResult {
   dimensions?: Dimensions;
   expanded_analysis?: ExpandedAnalysis;
   triggered_rule?: string;
+  claim_type?: string;
+  dimension_buckets?: Record<string, "LOW" | "MEDIUM" | "HIGH">;
+  debug?: {
+    detector_fired_first?: string;
+    why_verdict_chosen?: string;
+    final_rule_triggered?: string;
+    raw_intermediate_scores?: Record<string, unknown>;
+  };
   manipulation_score?: number;
   conspiracy_flag?: boolean;
   sarcasm?: boolean;
@@ -61,9 +69,12 @@ export type PrimaryVerdict =
 
 export interface Dimensions {
   truth_score: number;
+  verifiability?: number;
   ai_likelihood: number;
   bias_score: number;
   manipulation_score: number;
+  sarcasm_score?: number;
+  opinion_score?: number;
   sarcasm: boolean;
   conspiracy_flag: boolean;
 }
@@ -79,6 +90,18 @@ export interface ExpandedAnalysis {
     indicators?: string[];
   };
   bias_score?: {
+    explanation?: string;
+    indicators?: string[];
+  };
+  manipulation_score?: {
+    explanation?: string;
+    indicators?: string[];
+  };
+  opinion_score?: {
+    explanation?: string;
+    indicators?: string[];
+  };
+  verifiability?: {
     explanation?: string;
     indicators?: string[];
   };

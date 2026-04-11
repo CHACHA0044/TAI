@@ -166,9 +166,12 @@ class PrimaryVerdict(str, Enum):
 
 class DimensionsInfo(BaseModel):
     truth_score: int = 0
+    verifiability: int = 0
     ai_likelihood: int = 0
     bias_score: int = 0
     manipulation_score: int = 0
+    sarcasm_score: int = 0
+    opinion_score: int = 0
     sarcasm: bool = False
     conspiracy_flag: bool = False
 
@@ -193,6 +196,9 @@ class ExpandedAnalysisInfo(BaseModel):
     truth_score: TruthExpandedInfo = Field(default_factory=TruthExpandedInfo)
     ai_likelihood: AiExpandedInfo = Field(default_factory=AiExpandedInfo)
     bias_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    manipulation_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    opinion_score: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
+    verifiability: BiasExpandedInfo = Field(default_factory=BiasExpandedInfo)
 
 
 class AnalysisResponse(BaseModel):
@@ -214,9 +220,12 @@ class AnalysisResponse(BaseModel):
     # Rich analysis fields
     primary_verdict: PrimaryVerdict = PrimaryVerdict.MIXED_ANALYSIS
     triggered_rule: Optional[str] = None
+    claim_type: Optional[str] = None
     confidence: int = 0
     dimensions: DimensionsInfo = Field(default_factory=DimensionsInfo)
+    dimension_buckets: Optional[dict] = None
     expanded_analysis: ExpandedAnalysisInfo = Field(default_factory=ExpandedAnalysisInfo)
+    debug: Optional[dict] = None
     verdict: str = "Inconclusive"
     risk_level: str = "Medium"
     recommendation: str = "Verify against trusted sources."
