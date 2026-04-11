@@ -36,6 +36,7 @@ def detect_bias(text: str, model_bias_score: float = 0.0) -> Dict[str, Any]:
     demonization_hits = _find_hits(normalized, DEMONIZATION_PATTERNS)
     framing_hits = _find_hits(normalized, US_VS_THEM_PATTERNS)
 
+    # Demonization terms are weighted highest because they are the strongest slant signal.
     rule_score = min(
         1.0,
         (len(loaded_hits) * 0.35) + (len(demonization_hits) * 0.45) + (len(framing_hits) * 0.35),

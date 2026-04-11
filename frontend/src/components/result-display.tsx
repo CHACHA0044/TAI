@@ -21,6 +21,8 @@ import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
 import { DebugPanel } from "./debug-panel";
 
+const MAX_DISPLAYED_RAW_SIGNALS = 8;
+
 interface ResultDisplayProps {
   result: AnalysisResult;
 }
@@ -564,7 +566,7 @@ function ExpandedMetricPanel({
     );
   }
 
-  const sarcasmDetected = String(debugRaw.sarcasm_detected ?? result.dimensions?.sarcasm ?? false);
+  const sarcasmDetectedDisplay = (debugRaw.sarcasm_detected ?? result.dimensions?.sarcasm ?? false) ? "true" : "false";
   return (
     <div className="glass rounded-2xl border border-purple-500/20 p-5 space-y-4">
       <h4 className="text-sm font-black text-purple-400 uppercase tracking-wider">Sarcasm Details</h4>
@@ -572,7 +574,8 @@ function ExpandedMetricPanel({
         Detects satirical/sarcastic cues that should be routed away from factual truth verdicts.
       </p>
       <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-        <li>{`sarcasm_detected=${sarcasmDetected}`}</li>
+        <li>{`sarcasm_detected=${sarcasmDetectedDisplay}`}</li>
+        {"sarcasm_score" in debugRaw && <li>{`sarcasm_score=${String(debugRaw.sarcasm_score)}`}</li>}
       </ul>
       <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
     </div>
@@ -588,7 +591,7 @@ function MetricExplainabilityFooter({
   reason: string;
   debugRaw: Record<string, unknown>;
 }) {
-  const rawSignals = Object.entries(debugRaw).slice(0, 8);
+  const rawSignals = Object.entries(debugRaw).slice(0, MAX_DISPLAYED_RAW_SIGNALS);
   return (
     <div className="pt-3 border-t border-white/10 space-y-2">
       <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Rule contributing to final verdict</p>

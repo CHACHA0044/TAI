@@ -35,6 +35,7 @@ def detect_manipulation(text: str, style_metrics: Dict[str, float]) -> Dict[str,
     fear_hits = _find_hits(normalized, FEAR_AND_MORALIZING_PATTERNS)
     exclamation_component = 0.08 if "!" in normalized else 0.0
 
+    # Urgency/coercion gets the highest weight because it is the strongest manipulation marker.
     rule_score = min(
         1.0,
         (len(emotional_hits) * 0.20)

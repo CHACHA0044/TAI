@@ -20,6 +20,7 @@ def compute_ai_likelihood(raw_model_ai: float, raw_features: Dict[str, float], s
     low_burstiness_component = _sanitize(1.0 - style_metrics.get("burstiness", 0.3))
     templated_component = _sanitize(style_metrics.get("stylometric_consistency", 0.5))
 
+    # Repetition/uniformity/templated phrasing carry stronger signal than burstiness alone.
     blended = (
         0.15 * ppl_component
         + 0.20 * repetition_component

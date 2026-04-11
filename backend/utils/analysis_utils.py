@@ -56,7 +56,7 @@ def aggregate_primary_verdict(
         return "MANIPULATIVE_CONTENT", "RULE_7_MANIPULATION", "Emotional pressure/coercive language is dominant."
     if extraordinary_claim_flag:
         return "CONSPIRACY_OR_EXTRAORDINARY_CLAIM", "RULE_8_EXTRAORDINARY", "Extraordinary claim marker triggered."
-    if ai_score >= 0.90 and not factual_claim and claim_type != "FACTUAL_CLAIM":
+    if ai_score >= 0.90 and not factual_claim:
         return "LIKELY_AI_GENERATED", "RULE_9_AI_AUXILIARY", "Very high AI-likelihood on non-factual content."
     return "MIXED_ANALYSIS", "RULE_10_MIXED", "No single dominant rule exceeded decision thresholds."
 
@@ -121,6 +121,7 @@ def get_verdict_and_risk(
         risk_level = "Low"
         recommendation = "Content appears factually grounded."
     elif primary_verdict in {"UNVERIFIED_CLAIM", "OPINION", "SATIRE_OR_SARCASM"}:
+        risk_level = "Medium"
         recommendation = "Interpret with context and verify before relying on it."
 
     key_factors = []

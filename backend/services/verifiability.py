@@ -23,6 +23,8 @@ MARKETING_PATTERNS = [
 ]
 
 RECENCY_LOCAL_PATTERNS = [
+    # Keep this list focused on locality/recency signals that are hard to verify globally.
+    # Previously included "today"/"yesterday", which overfired on ordinary time-bound text.
     r"\bjust now\b",
     r"\blocal\b",
     r"\bmy city\b",
@@ -43,6 +45,8 @@ FACTUAL_STRUCTURE_PATTERNS = [
     r"\bhas \d+\b",
 ]
 
+# Lowered from 8 to 6 as a practical heuristic so short factual claims
+# (e.g. "The Eiffel Tower is in Berlin") are testable instead of auto-unverified.
 MIN_WORDS_FOR_VERIFIABILITY = 6
 YEAR_PATTERN = r"\b\d{4}\b"
 PERCENTAGE_PATTERN = r"\b\d+%"
