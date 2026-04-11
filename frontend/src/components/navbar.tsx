@@ -1,9 +1,15 @@
 "use client";
 
+/* Breakpoints Addressed:
+ * xs/sm: Mobile hamburger menu, modal drawer trapping, emerald glows, 44px tap targets.
+ * md: Sticky top navigation, layout shifts to horizontal flex.
+ * lg+ : Desktop wide layout, preserved max constraints.
+ */
+
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Shield, Menu, X, FileText, Image, Video, Home } from "lucide-react";
 
 const navItems = [
@@ -17,14 +23,13 @@ export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
+  const prefersReducedMotion = useReducedMotion();
 
   useEffect(() => {
     const handler = () => {
-      // Use a slightly higher threshold for better visual separation
       setScrolled(window.scrollY > 10);
     };
     
-    // Initial check
     handler();
     
     window.addEventListener("scroll", handler, { passive: true });
@@ -35,29 +40,41 @@ export function Navbar() {
     setMobileOpen(false);
   }, [pathname]);
 
+  // Trap focus / block scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+  }, [mobileOpen]);
+
   return (
     <>
       <motion.nav
-        initial={{ y: -80, opacity: 0 }}
+        initial={prefersReducedMotion ? { opacity: 1 } : { y: -80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-        className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-5xl transition-all duration-500 ease-in-out rounded-2xl border ${
+        className={`fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-[1440px] transition-all duration-500 ease-in-out rounded-2xl border will-change-transform ${
           scrolled
-            ? "bg-[#05050a]/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] border-white/10 py-2.5 supports-[backdrop-filter]:bg-[#05050a]/40"
-            : "bg-transparent backdrop-blur-none border-transparent py-4 shadow-none"
+            ? "bg-[#05050a]/80 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)] border-white/10 py-2 sm:py-2.5 supports-[backdrop-filter]:bg-[#05050a]/60"
+            : "bg-transparent backdrop-blur-none border-transparent py-3 sm:py-4 shadow-none"
         }`}
       >
-        <div className="flex items-center justify-between px-5 py-3">
+        <div className="flex items-center justify-between px-4 sm:px-5">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 sm:gap-2.5 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-lg p-1"
+          >
             <div className="relative">
-              <div className="absolute inset-0 bg-blue-500/30 blur-lg rounded-full group-hover:bg-blue-500/50 transition-all duration-300" />
-              <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <div className="absolute inset-0 bg-emerald-500/30 blur-lg rounded-full group-hover:bg-emerald-500/50 transition-all duration-300" aria-hidden="true" />
+              <div className="relative w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Shield className="w-4.5 h-4.5 text-white" />
               </div>
             </div>
             <span className="text-sm font-bold tracking-tight">
-              <span className="text-gradient">TruthGuard</span>
+              <span className="bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent transform-gpu">TruthGuard</span>
               <span className="text-white/60 font-medium"> AI</span>
             </span>
           </Link>
@@ -70,7 +87,7 @@ export function Navbar() {
                 <Link
                   key={href}
                   href={href}
-                  className={`relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 ${
+                  className={`relative flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
                     active
                       ? "text-white"
                       : "text-white/50 hover:text-white/80 hover:bg-white/5"
@@ -79,8 +96,9 @@ export function Navbar() {
                   {active && (
                     <motion.div
                       layoutId="nav-pill"
-                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-600/30 to-purple-600/30 border border-white/10"
+                      className="absolute inset-0 rounded-xl bg-gradient-to-r from-emerald-600/30 to-teal-600/30 border border-white/10 pointer-events-none"
                       transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                      aria-hidden="true"
                     />
                   )}
                   <Icon className="relative w-3.5 h-3.5" />
@@ -91,19 +109,20 @@ export function Navbar() {
           </div>
 
           {/* CTA + Mobile button */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link
               href="/text"
-              className="hidden md:inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white hover:opacity-90 transition-opacity shadow-[0_4px_15px_rgba(99,102,241,0.3)]"
+              className="hidden md:inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:shadow-[0_4px_20px_rgba(16,185,129,0.3)] transition-shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
             >
               Try Now
             </Link>
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
-              className="md:hidden flex items-center justify-center w-8 h-8 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all"
-              aria-label="Toggle menu"
+              className="md:hidden flex items-center justify-center w-11 h-11 sm:w-10 sm:h-10 rounded-lg text-white/70 hover:text-white hover:bg-white/10 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 active:bg-white/5"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
             >
-              {mobileOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -113,36 +132,40 @@ export function Navbar() {
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.2 }}
-            className="fixed top-[4.5rem] left-4 right-4 z-40 rounded-2xl glass-strong border border-white/10 shadow-2xl md:hidden"
+            className="fixed top-[5rem] left-4 right-4 z-[90] rounded-2xl bg-[#05050a]/95 backdrop-blur-xl supports-[backdrop-filter]:bg-[#05050a]/80 border border-white/10 shadow-2xl md:hidden overflow-hidden"
+            role="dialog"
+            aria-modal="true"
           >
-            <div className="p-3 flex flex-col gap-1">
+            <div className="p-4 flex flex-col gap-2">
               {navItems.map(({ label, href, icon: Icon }) => {
                 const active = pathname === href;
                 return (
                   <Link
                     key={href}
                     href={href}
-                    className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                    className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-base font-medium transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 ${
                       active
-                        ? "bg-gradient-to-r from-blue-600/20 to-purple-600/20 text-white border border-white/10"
-                        : "text-white/60 hover:text-white hover:bg-white/5"
+                        ? "bg-gradient-to-r from-emerald-600/20 to-teal-600/20 text-white border border-emerald-500/20"
+                        : "text-white/60 hover:text-white hover:bg-white/5 active:bg-white/10"
                     }`}
                   >
-                    <Icon className="w-4 h-4" />
+                    <Icon className={`w-5 h-5 ${active ? "text-emerald-400" : ""}`} />
                     {label}
                   </Link>
                 );
               })}
-              <Link
-                href="/text"
-                className="mt-2 flex items-center justify-center px-4 py-3 rounded-xl text-sm font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white"
-              >
-                Try Now
-              </Link>
+              <div className="mt-4 pt-4 border-t border-white/10">
+                <Link
+                  href="/text"
+                  className="flex items-center justify-center w-full px-4 py-4 rounded-xl text-base font-semibold bg-gradient-to-r from-emerald-500 to-teal-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                >
+                  Try Now Open System
+                </Link>
+              </div>
             </div>
           </motion.div>
         )}

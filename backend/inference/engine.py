@@ -223,12 +223,39 @@ class InferenceEngine:
         if not self.openai_client:
             return None
 
-        system_prompt = (
-            "You are TruthGuard AI, a factual verification system. "
-            "Analyze the given text and return a JSON object with: "
-            "'truth_score' (0.0-1.0), 'ai_generated_score' (0.0-1.0), "
-            "and 'bias_score' (0.0-1.0). Be objective and factual."
-        )
+        system_prompt = """You are TruthGuard AI — a multi-modal verification engine.
+You perform THREE completely independent analyses on the given text.
+
+CRITICAL ISOLATION RULE:
+These three scores are MATHEMATICALLY INDEPENDENT. No score should influence any other score.
+
+━━━ ANALYSIS 1: TRUTH SCORE ━━━
+Definition: How factually accurate is the content? (Scale: 0-100)
+Rules:
+- A statement written by AI can still be 100% factually true.
+- DO NOT lower score because text is vague or sounds AI-generated.
+- UNESCO/World Bank accepted social science ("Education is a pillar") is 85-90% True, not Unverified.
+Guide: 90-100 (Verified), 70-89 (Mostly Correct), 40-69 (Mixed), 10-39 (False), 0-9 (Completely False), null=Unverifiable Opinion.
+
+━━━ ANALYSIS 2: AI LIKELIHOOD ━━━
+Definition: Probability this text is AI-generated. (Scale: 0-100)
+Rules: Lexical predictability, use of "crucial", "delve". DOES NOT lower Truth Score.
+
+━━━ ANALYSIS 3: BIAS LEVEL ━━━
+Definition: Slant or loaded framing. (Scale: 0-100)
+
+Return your response as valid JSON ONLY:
+{
+  "truth_score": <0-100 or null>,
+  "truth_reasoning": "<specific sources>",
+  "ai_likelihood": <0-100>,
+  "ai_reasoning": "<signals>",
+  "bias_level": <0-100>,
+  "bias_reasoning": "<framing>",
+  "final_verdict": "<VERIFIED | MOSTLY VERIFIED | PARTIALLY VERIFIED | FALSE | UNVERIFIABLE>",
+  "note": "AI likelihood has no effect on truth."
+}
+"""
         try:
             import json
             response = self.openai_client.chat.completions.create(
@@ -280,12 +307,38 @@ class InferenceEngine:
         bias_score = self._sanitize(float(np.argmax(bias_probs) / 2.0))
 
         # 2.5 Optional OpenAI enhancement
+        self._expert_reasoning = None
+        self._truth_reasoning = None
         oa_res = self.call_openai(content)
         if oa_res:
-            logger.info("Fusing OpenAI insights (60% weight)")
-            truth_score = (truth_score * 0.4) + (oa_res.get("truth_score", 0.5) * 0.6)
-            ai_generated_score = (ai_generated_score * 0.4) + (oa_res.get("ai_generated_score", 0.5) * 0.6)
-            bias_score = (bias_score * 0.4) + (oa_res.get("bias_score", 0.5) * 0.6)
+            logger.info("Fusing independent OpenAI insights")
+            
+            ts_raw = oa_res.get("truth_score")
+            ts_val = 0.5
+            if ts_raw is not None:
+                ts_val = float(ts_raw)
+                if ts_val > 1.0: ts_val /= 100.0
+
+            ai_raw = oa_res.get("ai_likelihood", oa_res.get("ai_generated_score"))
+            ai_val = 0.5
+            if ai_raw is not None:
+                ai_val = float(ai_raw)
+                if ai_val > 1.0: ai_val /= 100.0
+
+            bias_raw = oa_res.get("bias_level", oa_res.get("bias_score"))
+            bias_val = 0.5
+            if bias_raw is not None:
+                bias_val = float(bias_raw)
+                if bias_val > 1.0: bias_val /= 100.0
+
+            truth_score = (truth_score * 0.2) + (ts_val * 0.8)
+            ai_generated_score = (ai_generated_score * 0.2) + (ai_val * 0.8)
+            bias_score = (bias_score * 0.2) + (bias_val * 0.8)
+            
+            if "ai_reasoning" in oa_res:
+                self._expert_reasoning = oa_res["ai_reasoning"]
+            if "truth_reasoning" in oa_res:
+                self._truth_reasoning = oa_res["truth_reasoning"]
 
         # 3. Feature extraction (perplexity + stylometry)
         logger.info("Extracting features...")
@@ -314,7 +367,7 @@ class InferenceEngine:
             except Exception as exc:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
-        # 5. Fusion & self-check
+        # 5. Fusion & self-check (STRICTLY INDEPENDENT)
         # When no external signals are available, we default to the model truth score.
         if verification_signals:
             final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
@@ -328,10 +381,7 @@ class InferenceEngine:
                  final_truth_score *= 0.5  # Heavy penalty for "obviously false/unsubstantiated" content
                  logger.info("Content labeled as highly suspicious (zero news support)")
 
-        # Only penalize if both AI probability is very high AND external credibility
-        # is low — not when credibility is simply at its neutral default (0.5).
-        if ai_generated_score > 0.8 and verification_signals and avg_external_cred < 0.4:
-            final_truth_score = self._sanitize(final_truth_score * 0.9)
+        # AI Likelihood MUST NOT lower the Truth Score. Removed legacy penalty logic.
 
         # Confidence: distance of final truth from the midpoint, clamped to [0.4, 0.95]
         uncertainty_penalty = 0.0
@@ -349,7 +399,6 @@ class InferenceEngine:
         logger.info(f"Analysis complete in {elapsed_ms}ms")
 
         # 6. Build response matching the frontend contract
-        # Transform verification signals → frontend "signals" format
         signals = []
         for vs in verification_signals:
             # Filter: Don't show the signal unless it's actually relevant to the claim
@@ -371,7 +420,12 @@ class InferenceEngine:
             "credibility_score": round(avg_external_cred, 2),
             "confidence_score": round(confidence, 2),
             "explanation": self._generate_explanation(
-                final_truth_score, ai_generated_score, bias_score, raw_features
+                final_truth_score, 
+                ai_generated_score, 
+                bias_score, 
+                raw_features, 
+                getattr(self, "_expert_reasoning", None),
+                getattr(self, "_truth_reasoning", None)
             ),
             "features": {
                 "perplexity": round(raw_features.get("perplexity", 0), 1),
@@ -391,28 +445,34 @@ class InferenceEngine:
             },
         }
 
-    def _generate_explanation(self, truth, ai, bias, features):
+    def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None):
         parts = []
-        if truth > 0.85:
-            parts.append("The content demonstrates exceptionally high factual alignment with verified source networks.")
-        elif truth > 0.7:
-            parts.append("The content aligns well with verified factual datasets.")
-        elif truth < 0.2:
-            parts.append("CRITICAL: Significant factual contradictions detected against multiple independent verifiers.")
-        elif truth < 0.35:
-            parts.append("Factual inconsistencies detected against cross-referenced news signals.")
+        if truth_reasoning:
+            parts.append(truth_reasoning)
         else:
-            parts.append("Factual status is ambiguous or lacks sufficient external supporting evidence.")
+            if truth > 0.85:
+                parts.append("The content demonstrates exceptionally high factual alignment with verified source networks.")
+            elif truth > 0.7:
+                parts.append("The content aligns well with verified factual datasets.")
+            elif truth < 0.2:
+                parts.append("CRITICAL: Significant factual contradictions detected against multiple independent verifiers.")
+            elif truth < 0.35:
+                parts.append("Factual inconsistencies detected against cross-referenced news signals.")
+            else:
+                parts.append("Factual status is ambiguous or lacks sufficient external supporting evidence.")
 
-        ppl = features.get("perplexity", 0)
-        div = features.get("lexical_diversity", 0.5)
-        
-        if ai > 0.85:
-            parts.append(f"Highly suspect stylometric markers (perplexity: {ppl:.1f}) strongly suggest machine-generation.")
-        elif ai > 0.7:
-            parts.append(f"Syntactic patterns indicate a high probability of AI assisted authorship.")
-        elif ai < 0.3 and div > 0.4:
-            parts.append("Natural lexical diversity and sentence variance align with authentic human authorship.")
+        if expert_reasoning:
+            parts.append(expert_reasoning)
+        else:
+            ppl = features.get("perplexity", 0)
+            div = features.get("lexical_diversity", 0.5)
+            
+            if ai > 0.85:
+                parts.append(f"Highly suspect stylometric markers (perplexity: {ppl:.1f}) strongly suggest machine-generation.")
+            elif ai > 0.7:
+                parts.append(f"Syntactic patterns indicate a high probability of AI assisted authorship.")
+            elif ai < 0.3 and div > 0.4:
+                parts.append("Natural lexical diversity and sentence variance align with authentic human authorship.")
 
         if bias > 0.7:
             parts.append("Language patterns suggest a strong slant or potential manipulative framing designed to provoke response.")
