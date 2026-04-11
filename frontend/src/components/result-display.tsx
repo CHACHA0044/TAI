@@ -74,6 +74,24 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       </div>
 
+      {/* Source URL banner — shown when result originated from URL extraction */}
+      {result.source && (result.source.startsWith("http://") || result.source.startsWith("https://")) && (
+        <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold">
+          <Globe className="w-4 h-4 flex-shrink-0" />
+          <span className="text-white/50 uppercase tracking-widest text-[10px] flex-shrink-0">Analyzed URL</span>
+          <a
+            href={result.source}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="truncate hover:text-sky-300 transition-colors flex items-center gap-1"
+            title={result.source}
+          >
+            {result.source}
+            <ExternalLink className="w-3 h-3 flex-shrink-0 ml-1" />
+          </a>
+        </div>
+      )}
+
       {/* Core Score Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {result.category ? (

@@ -1,3 +1,4 @@
+import math
 import torch
 import numpy as np
 import os
@@ -153,10 +154,17 @@ class InferenceEngine:
                 
                 self.model.to(self.device)
                 self.model.eval()
-                logger.info(f"Model loaded: {source}")
+                logger.info(f"[MODEL MODE: REAL] Model loaded: {source}")
                 return
             except Exception as e:
                 logger.warning(f"Model load failed ({e}) — falling back to mock")
+
+        # Check if production requires a real model
+        if os.getenv("REQUIRE_REAL_MODEL", "").lower() in ("1", "true", "yes"):
+            raise RuntimeError(
+                "REQUIRE_REAL_MODEL is set but no real model could be loaded. "
+                "Ensure model weights exist at backend/models/roberta-finetuned."
+            )
 
         # Fallback
         try:
@@ -165,7 +173,10 @@ class InferenceEngine:
         except Exception:
             self.tokenizer = None
         self.model = MockModel().to(self.device)
-        logger.info("Using MockModel")
+        logger.warning(
+            "[MODEL MODE: MOCK] Real model not available — using MockModel. "
+            "Inference results are NOT real. Set REQUIRE_REAL_MODEL=true to fail fast."
+        )
 
     def _tokenize(self, text):
         """Tokenize text, handling both real and mock tokenizers."""
@@ -207,6 +218,16 @@ class InferenceEngine:
             return None
 
     # ------------------------------------------------------------------
+    # Score sanitation
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _sanitize(value: float, default: float = 0.5) -> float:
+        """Clamp a score to [0, 1] and replace NaN/inf with a safe default."""
+        if not math.isfinite(value):
+            return default
+        return max(0.0, min(1.0, value))
+
+    # ------------------------------------------------------------------
     # Main analysis pipeline
     # ------------------------------------------------------------------
     def analyze(self, text_or_url):
@@ -225,11 +246,11 @@ class InferenceEngine:
         with torch.no_grad():
             outputs = self.model(**inputs)
 
-        truth_score = float(outputs["truth"].cpu().item())
+        truth_score = self._sanitize(float(outputs["truth"].cpu().item()))
         ai_probs = torch.softmax(outputs["ai"], dim=1).cpu().numpy()[0]
-        ai_generated_score = float(ai_probs[1])
+        ai_generated_score = self._sanitize(float(ai_probs[1]))
         bias_probs = torch.softmax(outputs["bias"], dim=1).cpu().numpy()[0]
-        bias_score = float(np.argmax(bias_probs) / 2.0)
+        bias_score = self._sanitize(float(np.argmax(bias_probs) / 2.0))
 
         # 2.5 Optional OpenAI enhancement
         oa_res = self.call_openai(content)
@@ -267,11 +288,11 @@ class InferenceEngine:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
         # 5. Fusion & self-check
-        final_truth_score = (truth_score * 0.6) + (avg_external_cred * 0.4)
+        final_truth_score = self._sanitize((truth_score * 0.6) + (avg_external_cred * 0.4))
         if ai_generated_score > 0.8 and avg_external_cred < 0.6:
-            final_truth_score *= 0.9
+            final_truth_score = self._sanitize(final_truth_score * 0.9)
 
-        confidence = 0.5 + (0.5 * abs(truth_score - 0.5) * 2)
+        confidence = self._sanitize(0.5 + (0.5 * abs(truth_score - 0.5) * 2))
 
         elapsed_ms = int((time.time() - start_time) * 1000)
         logger.info(f"Analysis complete in {elapsed_ms}ms")

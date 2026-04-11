@@ -55,11 +55,28 @@ def _run_loop() -> None:
         time.sleep(_POLL_INTERVAL_S)
 
 
-def start_warmup_service() -> threading.Thread:
+_WARMUP_ENABLED = os.getenv("WARMUP_ENABLED", "true").lower() in ("1", "true", "yes")
+
+# Singleton guard — prevents duplicate threads if called more than once.
+_started = False
+_lock = threading.Lock()
+
+
+def start_warmup_service() -> threading.Thread | None:
     """
     Spawn the warmup loop as a background daemon thread and return it.
     Safe to call multiple times — subsequent calls are no-ops.
+    Gated by the ``WARMUP_ENABLED`` environment variable (default: true).
     """
+    global _started
+    if not _WARMUP_ENABLED:
+        logger.info("Warmup service disabled (WARMUP_ENABLED != true)")
+        return None
+    with _lock:
+        if _started:
+            logger.info("Warmup service already running — skipping duplicate start")
+            return None
+        _started = True
     thread = threading.Thread(target=_run_loop, name="warmup-service", daemon=True)
     thread.start()
     logger.info(f"Warmup service started (interval={_POLL_INTERVAL_S}s, port={_LOCAL_PORT})")

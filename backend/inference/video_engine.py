@@ -6,6 +6,7 @@ import tempfile
 import time
 import logging
 import hashlib
+import uuid
 import numpy as np
 import torch
 from PIL import Image
@@ -68,14 +69,12 @@ class VideoEngine:
         start = time.time()
         logger.info(f"VideoEngine.analyze() — file={filename}, size={len(video_bytes)//1024}KB")
 
-        # Write bytes to an in-memory buffer readable by OpenCV
-        buf_array = np.frombuffer(video_bytes, dtype=np.uint8)
         cap = cv2.VideoCapture()
 
-        # OpenCV needs a file path; write to a system temp directory
+        # Use a unique per-request temp path to avoid concurrent collisions
         tmp_path = os.path.join(
             tempfile.gettempdir(),
-            f"tmp_video_{hashlib.md5(video_bytes[:1024]).hexdigest()[:8]}.mp4",
+            f"tmp_video_{uuid.uuid4().hex}.mp4",
         )
         with open(tmp_path, "wb") as f:
             f.write(video_bytes)
@@ -411,7 +410,7 @@ class VideoEngine:
           2. Compute spectral & temporal features via librosa.
           3. Map feature combination to a heuristic score.
         """
-        tmp_audio = os.path.join(tempfile.gettempdir(), "tmp_audio_analysis.wav")
+        tmp_audio = os.path.join(tempfile.gettempdir(), f"tmp_audio_{uuid.uuid4().hex}.wav")
         try:
             # Step 1 — extract audio
             proc = subprocess.run(
@@ -540,11 +539,11 @@ class VideoEngine:
         result = {
             "category":          category,
             "source":            source,
-            "truth_score":       0.0,
-            "ai_generated_score": round(ai_score, 2),
+            "truth_score":       round(max(0.0, min(1.0, 1.0 - ai_score)), 2),
+            "ai_generated_score": round(max(0.0, min(1.0, ai_score)), 2),
             "bias_score":         0.0,
-            "credibility_score":  round(1 - ela_score, 2),
-            "confidence_score":   confidence,
+            "credibility_score":  round(max(0.0, min(1.0, 1.0 - ela_score)), 2),
+            "confidence_score":   round(max(0.0, min(1.0, confidence)), 2),
             "explanation":        explanation,
             "features": {
                 "perplexity": round(temporal_variance, 4),

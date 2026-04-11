@@ -1,5 +1,7 @@
 import logging
 import os
+import tempfile
+import uuid as _uuid
 
 # Hugging Face cache - prefer environment variable, default to /app cache
 if "HF_HOME" not in os.environ:
@@ -46,7 +48,8 @@ if frontend_url != "*":
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
+    # Credentials (cookies/auth headers) must NOT be sent with wildcard origins
+    allow_credentials=(frontend_url != "*"),
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -225,17 +228,20 @@ async def analyze_text(request: AnalysisRequest):
 
 @app.post("/analyze-url", response_model=AnalysisResponse)
 async def analyze_url(request: AnalysisRequest):
-    content = resolve_content(request)
-    logger.info(f"POST /analyze-url — input: {content[:80]}...")
+    original_url = resolve_content(request)
+    logger.info(f"POST /analyze-url — input: {original_url[:80]}...")
 
     try:
         engine = get_engine()
-        result = engine.analyze(content)
+        result = engine.analyze(original_url)
         if not result:
             raise HTTPException(
                 status_code=400,
                 detail="Could not extract content from URL. Please paste text manually.",
             )
+        # Surface the original URL so the frontend can display it
+        if original_url.startswith("http://") or original_url.startswith("https://"):
+            result["source"] = original_url
         return result
     except HTTPException:
         raise
@@ -256,6 +262,8 @@ async def analyze_image(file: UploadFile = File(...)):
         engine = get_image_engine()
         result = engine.analyze(contents, filename=file.filename)
         return result
+    except HTTPException:
+        raise
     except Exception as e:
         logger.exception("Error during image analysis")
         raise HTTPException(status_code=500, detail=str(e))
@@ -279,8 +287,16 @@ async def analyze_video(file: UploadFile = File(...)):
         if cached:
             return {"status": "complete", "result": cached}
 
-        # 2. Async Queueing
-        task = process_video_task.delay(contents, file.filename or "upload.mp4", content_hash)
+        # 2. Save upload to a temp file and queue only its path — never broker raw bytes.
+        #    This avoids JSON-serialisation failures and huge Redis memory usage.
+        ext = os.path.splitext(file.filename or "upload.mp4")[1] or ".mp4"
+        tmp_path = os.path.join(tempfile.gettempdir(), f"tg_upload_{_uuid.uuid4().hex}{ext}")
+        with open(tmp_path, "wb") as fh:
+            fh.write(contents)
+        logger.info(f"Upload saved to temp path: {tmp_path}")
+
+        # 3. Async Queueing — pass path + hash only, not bytes
+        task = process_video_task.delay(tmp_path, file.filename or "upload.mp4", content_hash)
         logger.info(f"Video analysis queued — task_id: {task.id}")
 
         return {"status": "processing", "job_id": task.id}
