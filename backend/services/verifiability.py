@@ -12,6 +12,16 @@ SUBJECTIVE_PATTERNS = [
     r"\blooks like\b",
     r"\bbest\b",
     r"\bworst\b",
+    r"\bbetter than\b",
+    r"\bbetter\b.*\bthan\b",
+    r"\bworse than\b",
+    r"\bworse\b.*\bthan\b",
+    r"\bmore than\b",
+    r"\bless than\b",
+    r"\bbeautiful\b",
+    r"\bugly\b",
+    r"\bgreat\b",
+    r"\bterrible\b",
 ]
 
 MARKETING_PATTERNS = [
@@ -83,7 +93,7 @@ def assess_claim_verifiability(text: str, claim_type: str = "") -> Dict[str, Any
             "claim_type": inferred_claim_type,
         }
 
-    if inferred_claim_type == "UNVERIFIABLE_SPECULATION" or any(re.search(pattern, normalized) for pattern in SPECULATION_PATTERNS):
+    if inferred_claim_type == "SPECULATIVE" or any(re.search(pattern, normalized) for pattern in SPECULATION_PATTERNS):
         return {
             "claim_verifiable": False,
             "opinion_detected": False,

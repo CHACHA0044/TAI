@@ -23,6 +23,8 @@ US_VS_THEM_PATTERNS = [
     "our side",
     "those people",
     "mainstream media",
+    "media is a propaganda machine",
+    "propaganda machine",
 ]
 
 
@@ -39,7 +41,7 @@ def detect_bias(text: str, model_bias_score: float = 0.0) -> Dict[str, Any]:
     # Demonization terms are weighted highest because they are the strongest slant signal.
     rule_score = min(
         1.0,
-        (len(loaded_hits) * 0.35) + (len(demonization_hits) * 0.45) + (len(framing_hits) * 0.35),
+        (len(loaded_hits) * 0.45) + (len(demonization_hits) * 0.45) + (len(framing_hits) * 0.35),
     )
     score = max(rule_score, float(model_bias_score))
 

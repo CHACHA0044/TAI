@@ -20,6 +20,7 @@ export function DebugPanel({ data }: DebugPanelProps) {
   const featureMetrics = (rawMeta.feature_metrics ?? {}) as Record<string, unknown>;
   const rawClassifierOutputs = (rawMeta.raw_classifier_outputs ?? {}) as Record<string, unknown>;
   const aggregationRule = String(rawMeta.aggregation_rule ?? data.triggered_rule ?? "N/A");
+  const debug = (data.debug ?? {}) as Record<string, unknown>;
 
   return (
     <div className="mt-8">
@@ -77,6 +78,11 @@ export function DebugPanel({ data }: DebugPanelProps) {
                 <div className="space-y-3">
                   {!data.category && <MetricRow label="Perplexity" value={perplexity.toFixed(1)} />}
                   {!data.category && <MetricRow label="Aggregation Rule" value={aggregationRule} />}
+                  {!data.category && <MetricRow label="Text Type Detected" value={String(debug.text_type_detected ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Verifiability Result" value={String(debug.verifiability_result ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Trust Agent Confidence" value={String(debug.trust_agent_confidence ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Retrieval Support Score" value={String(debug.retrieval_support_score ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Retrieval Contradiction Score" value={String(debug.retrieval_contradiction_score ?? "N/A")} />}
                   {!data.category && <MetricRow label="Feature Burstiness" value={String(featureMetrics.burstiness ?? "0")} />}
                   {!data.category && <MetricRow label="Feature Sentence Variance" value={String(featureMetrics.sentence_variance ?? stylometry?.sentence_length_variance ?? 0)} />}
                   {!data.category && <MetricRow label="Feature Lexical Diversity" value={String(featureMetrics.lexical_diversity ?? stylometry?.lexical_diversity ?? 0)} />}
