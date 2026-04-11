@@ -306,7 +306,7 @@ class InferenceEngine:
             "signals": signals,
             **({"news_consistency_score": round(news_consistency_score, 2)} if news_consistency_score is not None else {}),
             "metadata": {
-                "model": "roberta-base + gpt2-perplexity",
+                "model": "roberta-finetuned + gpt2-perplexity",
                 "latency_ms": elapsed_ms,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
             },
