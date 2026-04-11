@@ -59,8 +59,15 @@ class VideoEngine:
         self.face_cascade = cv2.CascadeClassifier(face_cascade_path)
 
         # Semantic Layer (Lazy loaded)
-        self.blip_processor = None
-        self.blip_model     = None
+        self.processor = None
+        self.desc_model = None
+        
+        # Check if transformers is available for this engine
+        try:
+            import transformers
+            self.transformers_available = True
+        except ImportError:
+            self.transformers_available = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -430,6 +437,8 @@ class VideoEngine:
           2. Compute spectral & temporal features via librosa.
           3. Map feature combination to a heuristic score.
         """
+        if not os.path.exists(video_path):
+            return 1.0
         tmp_audio = os.path.join(tempfile.gettempdir(), f"tmp_audio_{uuid.uuid4().hex}.wav")
         try:
             # Step 1 — extract audio
