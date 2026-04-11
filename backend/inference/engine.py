@@ -45,11 +45,11 @@ from services.adapters import (
 from utils.url_extractor import extract_content, get_claims
 
 try:
-    from openai import OpenAI
-    HAS_OPENAI = True
+    from groq import Groq
+    HAS_GROQ = True
 except ImportError:
-    HAS_OPENAI = False
-    logger.warning("openai package not installed — OpenAI enhancement disabled")
+    HAS_GROQ = False
+    logger.warning("groq package not installed — Groq enhancement disabled")
 
 try:
     from dotenv import load_dotenv
@@ -108,16 +108,16 @@ class InferenceEngine:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         logger.info(f"Using device: {self.device}")
 
-        # OpenAI client (optional enhancement)
-        self.openai_client = None
-        self.openai_model = os.getenv("OPENAI_FINETUNED_MODEL", "gpt-4o-mini-2024-07-18")
-        api_key = os.getenv("OPENAI_API_KEY", "")
-        if HAS_OPENAI and api_key and not api_key.startswith("sk-dummy"):
+        # Groq client (Expert Reasoning enhancement)
+        self.groq_client = None
+        self.groq_model = "llama-3.3-70b-versatile"
+        groq_key = os.getenv("GROQ_API_KEY", "")
+        if HAS_GROQ and groq_key:
             try:
-                self.openai_client = OpenAI(api_key=api_key)
-                logger.info("OpenAI client initialized")
+                self.groq_client = Groq(api_key=groq_key)
+                logger.info(f"Groq client initialized ({self.groq_model})")
             except Exception as e:
-                logger.warning(f"OpenAI init failed: {e}")
+                logger.warning(f"Groq init failed: {e}")
 
         # Load model + tokenizer
         self.base_model_name = "roberta-base"
@@ -235,33 +235,30 @@ class InferenceEngine:
         )
         return {k: v.to(self.device) for k, v in tokens.items()}
 
-    def call_openai(self, text):
-        """Optional OpenAI enhancement for higher fidelity analysis."""
-        if not self.openai_client:
+    def call_expert_llm(self, text):
+        """Groq enhancement for higher fidelity analysis using Llama-3 (Expert Reasoning)."""
+        if not self.groq_client:
             return None
 
         system_prompt = """You are TruthGuard AI — a multi-modal verification engine.
-You perform THREE completely independent analyses on the given text.
+Perform THREE completely independent analyses on the text below.
 
 CRITICAL ISOLATION RULE:
-These three scores are MATHEMATICALLY INDEPENDENT. No score should influence any other score.
+These three scores (Truth, AI, Bias) must be MATHEMATICALLY INDEPENDENT. No score should influence any other score.
 
 ━━━ ANALYSIS 1: TRUTH SCORE ━━━
 Definition: How factually accurate is the content? (Scale: 0-100)
-Rules:
-- A statement written by AI can still be 100% factually true.
-- DO NOT lower score because text is vague or sounds AI-generated.
-- UNESCO/World Bank accepted social science ("Education is a pillar") is 85-90% True, not Unverified.
-Guide: 90-100 (Verified), 70-89 (Mostly Correct), 40-69 (Mixed), 10-39 (False), 0-9 (Completely False), null=Unverifiable Opinion.
+- Accuracy ONLY. Do not penalize for AI usage or vague writing.
+Guide: 90-100 (Verified), 70-89 (Mostly Correct), 40-69 (Mixed), 10-39 (False), 0-9 (Completely False).
 
 ━━━ ANALYSIS 2: AI LIKELIHOOD ━━━
-Definition: Probability this text is AI-generated. (Scale: 0-100)
-Rules: Lexical predictability, use of "crucial", "delve". DOES NOT lower Truth Score.
+Definition: Probability this text is AI-generated (0-100).
+- Signals: Lexical predictability, "crucial", "delve", robotic structure.
 
 ━━━ ANALYSIS 3: BIAS LEVEL ━━━
-Definition: Slant or loaded framing. (Scale: 0-100)
+Definition: Slant or loaded framing (0-100).
 
-Return your response as valid JSON ONLY:
+Return valid JSON ONLY (no markdown blocks):
 {
   "truth_score": <0-100 or null>,
   "truth_reasoning": "<specific sources>",
@@ -269,23 +266,23 @@ Return your response as valid JSON ONLY:
   "ai_reasoning": "<signals>",
   "bias_level": <0-100>,
   "bias_reasoning": "<framing>",
-  "final_verdict": "<VERIFIED | MOSTLY VERIFIED | PARTIALLY VERIFIED | FALSE | UNVERIFIABLE>",
-  "note": "AI likelihood has no effect on truth."
+  "final_verdict": "<VERIFIED | MOSTLY VERIFIED | PARTIALLY VERIFIED | FALSE | UNVERIFIABLE>"
 }
 """
         try:
             import json
-            response = self.openai_client.chat.completions.create(
-                model=self.openai_model,
+            completion = self.groq_client.chat.completions.create(
+                model=self.groq_model,
                 messages=[
                     {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": text[:2000]},
+                    {"role": "user", "content": text[:3000]},
                 ],
                 response_format={"type": "json_object"},
+                temperature=0.1,
             )
-            return json.loads(response.choices[0].message.content)
+            return json.loads(completion.choices[0].message.content)
         except Exception as e:
-            logger.error(f"OpenAI call failed: {e}")
+            logger.error(f"Groq call failed: {e}")
             return None
 
     # ------------------------------------------------------------------
@@ -408,12 +405,12 @@ Return your response as valid JSON ONLY:
         bias_probs = torch.softmax(outputs["bias"], dim=1).cpu().numpy()[0]
         bias_score = self._sanitize(float(np.argmax(bias_probs) / 2.0))
 
-        # 2.5 Optional OpenAI enhancement
+        # 2.5 Optional LLM enhancement (Groq/Llama)
         self._expert_reasoning = None
         self._truth_reasoning = None
-        oa_res = self.call_openai(content)
+        oa_res = self.call_expert_llm(content)
         if oa_res:
-            logger.info("Fusing independent OpenAI insights")
+            logger.info("Fusing independent LLM insights (Groq)")
             
             ts_raw = oa_res.get("truth_score")
             ts_val = 0.5
