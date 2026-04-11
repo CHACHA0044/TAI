@@ -6,11 +6,9 @@ import time
 import re
 import logging
 from datetime import datetime, timezone
-from utils.analysis_utils import get_verdict_and_risk
+from utils.analysis_utils import get_verdict_and_risk, to_bucket
 
 logger = logging.getLogger("truthguard")
-AI_PPL_BASELINE = 55.0
-AI_PPL_CAP = 120.0
 AI_RAW_MODEL_WEIGHT = 0.7
 AI_OPENAI_BLEND_WEIGHT = 0.3
 
@@ -37,6 +35,10 @@ from services.trust_agents import TrustAgent
 from services.news_search_agent import NewsSearchAgent
 from services.sarcasm_detector import SarcasmDetector
 from services.verifiability import assess_claim_verifiability
+from services.claim_type_detector import classify_claim_type
+from services.bias_detector import detect_bias
+from services.manipulation_detector import detect_manipulation
+from services.ai_likelihood_service import compute_ai_likelihood
 from services.adapters import (
     HuggingFaceBiasClassifierAdapter,
     ExternalFactCheckAdapter,
@@ -326,30 +328,6 @@ Return valid JSON ONLY (no markdown blocks):
             "mean_sentence_length": round(mean_len, 4),
         }
 
-    def _compute_ai_likelihood(self, raw_model_ai: float, raw_features: dict, style_metrics: dict) -> float:
-        """
-        AI-likelihood blend designed to reduce false positives on formal writing.
-        No literal keyword triggers are used.
-        """
-        perplexity = float(raw_features.get("perplexity", 45.0))
-        # Lower perplexity can indicate machine-generated text, but we downweight it to
-        # avoid false positives on formal writing that naturally has lower perplexity.
-        ppl_component = self._sanitize((AI_PPL_BASELINE - min(perplexity, AI_PPL_CAP)) / AI_PPL_BASELINE, default=0.5)
-        repetition_component = self._sanitize(style_metrics.get("lexical_repetition", 0.0))
-        uniformity_component = self._sanitize(style_metrics.get("sentence_length_uniformity", 0.5))
-        consistency_component = self._sanitize(style_metrics.get("stylometric_consistency", 0.5))
-        low_burstiness_component = self._sanitize(1.0 - style_metrics.get("burstiness", 0.3))
-
-        blended = (
-            0.20 * ppl_component
-            + 0.18 * uniformity_component
-            + 0.18 * repetition_component
-            + 0.20 * consistency_component
-            + 0.12 * low_burstiness_component
-            + 0.12 * self._sanitize(raw_model_ai)
-        )
-        return self._sanitize(blended)
-
     @staticmethod
     def _detect_conspiracy(content: str) -> bool:
         markers = [
@@ -362,22 +340,6 @@ Return valid JSON ONLY (no markdown blocks):
         ]
         text = (content or "").lower()
         return any(marker in text for marker in markers)
-
-    @staticmethod
-    def _compute_manipulation_score(bias_score: float, style_metrics: dict, content: str) -> float:
-        emotional_terms = [
-            "shocking", "outrageous", "disaster", "evil", "wake up", "exposed", "must share", "urgent",
-        ]
-        text = (content or "").lower()
-        emotional_hits = sum(1 for term in emotional_terms if term in text)
-        emotional_component = min(1.0, emotional_hits / 6.0)
-        score = (
-            0.45 * bias_score
-            + 0.20 * style_metrics.get("lexical_repetition", 0.0)
-            + 0.15 * style_metrics.get("sentence_length_uniformity", 0.0)
-            + 0.20 * emotional_component
-        )
-        return max(0.0, min(1.0, score))
 
     # ------------------------------------------------------------------
     # Main analysis pipeline
@@ -445,7 +407,7 @@ Return valid JSON ONLY (no markdown blocks):
         logger.info("Extracting features...")
         raw_features = self.feature_extractor.extract_all(content)
         style_metrics = self._compute_style_metrics(content, raw_features)
-        ai_generated_score = self._compute_ai_likelihood(raw_model_ai_score, raw_features, style_metrics)
+        ai_generated_score = compute_ai_likelihood(raw_model_ai_score, raw_features, style_metrics)
 
         # 4. External verification
         logger.info("Running external verification...")
@@ -470,10 +432,21 @@ Return valid JSON ONLY (no markdown blocks):
             except Exception as exc:
                 logger.warning(f"NewsSearchAgent.get_consistency_score error: {exc}")
 
+        claim_type_signal = classify_claim_type(content)
+        claim_type = claim_type_signal.get("claim_type", "MIXED")
         sarcasm_signal = self.sarcasm_detector.detect(content)
-        verifiability = assess_claim_verifiability(content)
+        sarcasm_detected = bool(sarcasm_signal.get("sarcasm", False)) or claim_type == "SARCASTIC"
+        verifiability = assess_claim_verifiability(content, claim_type=claim_type)
         conspiracy_flag = self._detect_conspiracy(content)
-        manipulation_score = self._compute_manipulation_score(bias_score, style_metrics, content)
+        bias_signal = detect_bias(content, model_bias_score=bias_score)
+        bias_score = self._sanitize(max(float(bias_score), float(bias_signal.get("score", 0.0))))
+        manipulation_signal = detect_manipulation(content, style_metrics)
+        manipulation_score = self._sanitize(float(manipulation_signal.get("score", 0.0)))
+        factual_claim = claim_type == "FACTUAL_CLAIM" or (
+            bool(verifiability.get("claim_verifiable", False))
+            and not bool(verifiability.get("opinion_detected", False))
+            and claim_type not in {"PERSUASIVE_COPY", "UNVERIFIABLE_SPECULATION", "SARCASTIC"}
+        )
 
         # 5. Fusion & self-check (STRICTLY INDEPENDENT)
         # When no external signals are available, we default to the model truth score.
@@ -502,10 +475,12 @@ Return valid JSON ONLY (no markdown blocks):
         enriched = get_verdict_and_risk(
             final_truth_score, ai_generated_score, bias_score, confidence,
             manipulation_score=manipulation_score,
-            sarcasm_detected=bool(sarcasm_signal.get("sarcasm", False)),
+            sarcasm_detected=sarcasm_detected,
             conspiracy_flag=conspiracy_flag,
             claim_verifiable=bool(verifiability.get("claim_verifiable", True)),
             opinion_detected=bool(verifiability.get("opinion_detected", False)),
+            claim_type=claim_type,
+            factual_claim=factual_claim,
         )
 
         elapsed_ms = int((time.time() - start_time) * 1000)
@@ -532,18 +507,36 @@ Return valid JSON ONLY (no markdown blocks):
             "bias_model_raw": round(bias_score, 4),
             "external_credibility_mean": round(avg_external_cred, 4),
             "sarcasm_score": round(float(sarcasm_signal.get("score", 0.0)), 4),
+            "opinion_score": 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0,
             "claim_verifiable": bool(verifiability.get("claim_verifiable", True)),
             "opinion_detected": bool(verifiability.get("opinion_detected", False)),
             "verifiability_reason": verifiability.get("reason", "unknown"),
+            "claim_type": claim_type,
+            "claim_type_signals": claim_type_signal.get("signals", []),
+            "bias_indicators": bias_signal.get("indicators", []),
+            "manipulation_indicators": manipulation_signal.get("indicators", []),
         }
 
         dimensions = {
             "truth_score": int(round(final_truth_score * 100)),
+            "verifiability": int(100 if verifiability.get("claim_verifiable", True) else 20),
             "ai_likelihood": int(round(ai_generated_score * 100)),
             "bias_score": int(round(bias_score * 100)),
             "manipulation_score": int(round(manipulation_score * 100)),
-            "sarcasm": bool(sarcasm_signal.get("sarcasm", False)),
+            "sarcasm_score": int(round(float(sarcasm_signal.get("score", 0.0)) * 100)),
+            "opinion_score": int(100 if bool(verifiability.get("opinion_detected", False)) else 0),
+            "sarcasm": sarcasm_detected,
             "conspiracy_flag": conspiracy_flag,
+        }
+
+        dimension_buckets = {
+            "truth_score": to_bucket(final_truth_score),
+            "verifiability": "HIGH" if verifiability.get("claim_verifiable", True) else "LOW",
+            "ai_likelihood": to_bucket(ai_generated_score),
+            "bias_score": to_bucket(bias_score),
+            "manipulation_score": to_bucket(manipulation_score),
+            "sarcasm_score": to_bucket(float(sarcasm_signal.get("score", 0.0))),
+            "opinion_score": to_bucket(1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0),
         }
 
         # Only expose news_consistency_score if it's statistically significant (>0.35)
@@ -596,6 +589,28 @@ Return valid JSON ONLY (no markdown blocks):
                     "indicators": [
                         f"bias_model={round(bias_score, 4)}",
                         f"manipulation_score={round(manipulation_score, 4)}",
+                        *[f"bias_signal={value}" for value in bias_signal.get("indicators", [])],
+                    ],
+                },
+                "manipulation_score": {
+                    "explanation": "Flags emotional pressure, coercive urgency, fear framing, and sales pressure language.",
+                    "indicators": [
+                        *[f"manipulation_signal={value}" for value in manipulation_signal.get("indicators", [])],
+                    ],
+                },
+                "opinion_score": {
+                    "explanation": "Detects preference statements, value judgments, and rhetorical subjective framing.",
+                    "indicators": [
+                        f"claim_type={claim_type}",
+                        *[f"claim_signal={value}" for value in claim_type_signal.get("signals", [])],
+                        f"verifiability_reason={verifiability.get('reason', 'unknown')}",
+                    ],
+                },
+                "verifiability": {
+                    "explanation": "Gates factual verdicts by checking if the claim is sourceable and testable now.",
+                    "indicators": [
+                        f"claim_verifiable={bool(verifiability.get('claim_verifiable', True))}",
+                        f"verifiability_reason={verifiability.get('reason', 'unknown')}",
                     ],
                 },
             },
@@ -607,7 +622,10 @@ Return valid JSON ONLY (no markdown blocks):
                 "latency_ms": elapsed_ms,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "raw_metadata": {
-                    "aggregation_rule": enriched.get("triggered_rule", "RULE_9_MIXED"),
+                    "aggregation_rule": enriched.get("triggered_rule", "RULE_10_MIXED"),
+                    "dimension_buckets": dimension_buckets,
+                    "claim_type": claim_type,
+                    "debug": enriched.get("debug", {}),
                     "raw_classifier_outputs": raw_classifier_outputs,
                     "feature_metrics": {
                         "perplexity": round(raw_features.get("perplexity", 0), 4),
@@ -617,6 +635,9 @@ Return valid JSON ONLY (no markdown blocks):
                     },
                 },
             },
+            "dimension_buckets": dimension_buckets,
+            "claim_type": claim_type,
+            "debug": enriched.get("debug", {}),
         }
 
     def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None):
