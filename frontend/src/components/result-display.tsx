@@ -133,6 +133,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
   const opinion = toRatio(result.dimensions?.opinion_score);
   const sarcasm = toRatio(result.dimensions?.sarcasm_score);
   const confidence = toRatio(result.confidence ?? result.confidence_score);
+  const isVideo = !!result.metadata?.raw_metadata?.fps || !!result.frame_scores;
 
   const composedVerdict = useMemo(
     () =>
@@ -160,7 +161,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       case "AI_GENERATED":
       case "AI_GENERATED_SYNTHETIC_IMAGE":
         return {
-          label: "AI-Generated Synthetic Image",
+          label: isVideo ? "AI-Generated Video Content" : "AI-Generated Synthetic Image",
           color: "text-rose-400",
           bg: "bg-rose-500/10",
           border: "border-rose-500/30",
@@ -169,7 +170,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       case "EDITED":
       case "EDITED_MANIPULATED_IMAGE":
         return {
-          label: "Edited / Manipulated Image",
+          label: isVideo ? "Manipulated Video Content" : "Edited / Manipulated Image",
           color: "text-amber-400",
           bg: "bg-amber-500/10",
           border: "border-amber-500/30",
@@ -186,7 +187,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         };
       case "AUTHENTIC_REAL_PHOTOGRAPH":
         return {
-          label: "Authentic Real Photograph",
+          label: isVideo ? "Authentic Video Recording" : "Authentic Real Photograph",
           color: "text-emerald-400",
           bg: "bg-emerald-500/10",
           border: "border-emerald-500/30",
@@ -194,7 +195,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         };
       case "LIKELY_REAL_CAMERA_PHOTO":
         return {
-          label: "Likely Real Camera Photo",
+          label: isVideo ? "Likely Real Video Capture" : "Likely Real Camera Photo",
           color: "text-emerald-300",
           bg: "bg-emerald-500/10",
           border: "border-emerald-500/25",
@@ -234,14 +235,14 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         };
       default:
         return {
-          label: "Likely Real Photograph",
+          label: isVideo ? "Likely Real Video" : "Likely Real Photograph",
           color: "text-emerald-400",
           bg: "bg-emerald-500/10",
           border: "border-emerald-500/30",
           icon: ShieldCheck,
         };
     }
-  }, [result.category]);
+  }, [result.category, result.metadata?.raw_metadata, result.frame_scores]);
 
   const metrics = useMemo(() => {
     const expanded = result.expanded_analysis;
@@ -591,7 +592,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/35">Forensic Preview</p>
-              <h3 className="text-xl font-black text-white mt-1">{categoryVerdict?.label || "Image analysis result"}</h3>
+              <h3 className="text-xl font-black text-white mt-1">{categoryVerdict?.label || (isVideo ? "Video analysis result" : "Image analysis result")}</h3>
             </div>
             <span className="text-xs text-cyan-300 font-semibold">Open full report ↗</span>
           </div>
