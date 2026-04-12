@@ -7,6 +7,7 @@ import { SectionWrapper } from "@/components/section-wrapper";
 import { ResultDisplay } from "@/components/result-display";
 import { AnalysisResult } from "@/lib/types";
 import { analyzeText, analyzeURL } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 type InputMode = "text" | "url";
 
@@ -153,23 +154,19 @@ export default function TextDetectionPage() {
               </AnimatePresence>
 
               {/* Submit Button */}
-              <button
+              <Button
+                variant={loading ? "loading" : "primary"}
                 onClick={handleAnalyze}
                 disabled={loading || !input.trim()}
-                className="w-full mt-6 sm:mt-8 py-4 sm:py-5 min-h-[56px] rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white font-black text-lg sm:text-xl hover:shadow-[0_0_40px_rgba(16,185,129,0.3)] hover:-translate-y-1 active:translate-y-0 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex flex-row items-center justify-center gap-2 sm:gap-3 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+                className="w-full mt-6 sm:mt-8 py-4 sm:py-5 min-h-[56px] text-lg sm:text-xl font-black group"
               >
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin shrink-0" /> 
-                    <span className="whitespace-nowrap">VERIFYING SIGNALS...</span>
-                  </>
-                ) : (
-                  <>
+                {!loading && (
+                  <span className="flex items-center justify-center gap-2 sm:gap-3">
                     <span className="whitespace-nowrap">INVOKE GUARDIAN</span>
                     <Send className="w-4 h-4 sm:w-5 sm:h-5 shrink-0 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                  </>
+                  </span>
                 )}
-              </button>
+              </Button>
             </motion.div>
 
             <div className="flex items-center gap-4 sm:gap-6 px-2 sm:px-4">

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, ChevronUp, Cpu, Activity, Zap } from "lucide-react";
+import { Button } from "./ui/button";
 import { AnalysisResult } from "@/lib/types";
 
 interface DebugPanelProps {
@@ -24,9 +25,10 @@ export function DebugPanel({ data }: DebugPanelProps) {
 
   return (
     <div className="mt-8">
-      <button
+      <Button
+        variant="secondary"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+        className="w-full flex items-center justify-between p-4 px-4 rounded-2xl group border border-white/10"
       >
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
@@ -35,7 +37,7 @@ export function DebugPanel({ data }: DebugPanelProps) {
           <span className="text-sm font-bold text-white/80">Advanced Metrics / Debug Panel</span>
         </div>
         {isOpen ? <ChevronUp className="w-4 h-4 text-white/40" /> : <ChevronDown className="w-4 h-4 text-white/40" />}
-      </button>
+      </Button>
 
       <AnimatePresence>
         {isOpen && (

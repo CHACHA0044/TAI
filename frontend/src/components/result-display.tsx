@@ -20,6 +20,7 @@ import {
 import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
 import { DebugPanel } from "./debug-panel";
+import { Button } from "./ui/button";
 
 const MAX_DISPLAYED_RAW_SIGNALS = 8;
 
@@ -418,14 +419,14 @@ function ScoreCard({
     return "text-rose-400";
   };
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
       onClick={onClick}
-      className={`glass w-full text-left rounded-2xl border border-white/10 p-5 group transition-all ${
-        clickable ? "hover:border-white/20 cursor-pointer" : ""
+      className={`w-full text-left rounded-2xl border border-white/10 p-5 group transition-all !justify-start !items-start flex-col h-auto ${
+        clickable ? "hover:border-emerald-500/20 cursor-pointer" : "cursor-default pointer-events-none"
       }`}
     >
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between w-full mb-4">
         <div className="p-2 rounded-lg bg-white/5">
           {icon}
         </div>
@@ -433,10 +434,10 @@ function ScoreCard({
       </div>
       <p className="text-xs font-bold text-white/80 mb-1">{label}</p>
       <p className="text-[10px] text-white/30 leading-tight">{description}</p>
-      <div className="mt-4">
+      <div className="mt-4 w-full">
         <ScoreBar label="" score={score} showPercentage={false} color={getColor()} />
       </div>
-    </button>
+    </Button>
   );
 }
 

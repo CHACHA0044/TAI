@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, File, CheckCircle } from "lucide-react";
+import { Button } from "./ui/button";
 
 interface FileUploadProps {
   accept: string;
@@ -96,12 +97,13 @@ export function FileUpload({
                 {formatSize(selectedFile.size)}
               </p>
             </div>
-            <button
+            <Button
+              variant="icon"
               onClick={clearFile}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-all"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-white/40 hover:text-white"
             >
               <X className="w-4 h-4" />
-            </button>
+            </Button>
           </motion.div>
         ) : (
           <motion.label

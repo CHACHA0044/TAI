@@ -3,6 +3,7 @@
 import React, { useRef, useEffect, MouseEvent } from "react";
 import gsap from "gsap";
 import Tippy from "@tippyjs/react";
+import { cn } from "../../lib/utils";
 import "animate.css";
 import "../../styles/buttons.css";
 
@@ -132,23 +133,25 @@ export function Button({
     }
   }, [variant]);
 
-  const baseClasses = "tg-btn-base relative items-center justify-center";
   let variantClasses = "";
-  
   switch (variant) {
-    case "primary": variantClasses = "tg-btn-primary"; break;
-    case "secondary": variantClasses = "tg-btn-secondary focus:animate__animated focus:animate__pulse"; break;
-    case "ghost": variantClasses = `tg-btn-ghost ${isActive ? "tg-btn-ghost-active text-white" : ""}`; break;
-    case "icon": variantClasses = "tg-btn-icon"; break;
-    case "danger": variantClasses = "tg-btn-danger"; break;
-    case "loading": variantClasses = "tg-btn-loading"; break;
-    default: variantClasses = "tg-btn-secondary";
+    case "primary": variantClasses = "tg-btn-primary px-6 py-3 rounded-lg"; break;
+    case "secondary": variantClasses = "tg-btn-secondary px-5 py-2.5 rounded-md focus:animate__animated focus:animate__pulse"; break;
+    case "ghost": variantClasses = cn("tg-btn-ghost px-4 py-2 rounded-md", isActive && "tg-btn-ghost-active text-white"); break;
+    case "icon": variantClasses = "tg-btn-icon flex items-center justify-center rounded-xl"; break;
+    case "danger": variantClasses = "tg-btn-danger px-5 py-2.5 rounded-md"; break;
+    case "loading": variantClasses = "tg-btn-loading px-6 py-3 rounded-lg"; break;
+    default: variantClasses = "tg-btn-secondary px-5 py-2.5 rounded-md";
   }
 
   const buttonContent = (
     <button
       ref={btnRef}
-      className={`${baseClasses} ${variantClasses} ${className}`}
+      className={cn(
+        "tg-btn-base relative inline-flex items-center justify-center",
+        variantClasses,
+        className
+      )}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
       onMouseEnter={handleMouseEnter}

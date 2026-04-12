@@ -9,6 +9,7 @@ import { ResultDisplay } from "@/components/result-display";
 import { AnalysisResult } from "@/lib/types";
 import { analyzeImage } from "@/lib/api";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
 
 export default function ImageDetectionPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -115,21 +116,23 @@ export default function ImageDetectionPage() {
                     )}
                   </div>
                   
-                  <div className="flex gap-3">
-                    <button
+                  <div className="flex gap-3 mt-4">
+                    <Button
+                      variant="secondary"
                       onClick={reset}
                       disabled={loading}
-                      className="px-4 py-3 rounded-xl glass border border-white/10 text-white/70 hover:text-white transition-colors"
+                      className="h-14 px-4 rounded-xl flex items-center justify-center"
                     >
                       <RefreshCcw className="w-5 h-5" />
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant={loading ? "loading" : "primary"}
                       onClick={handleAnalyze}
                       disabled={loading || !!result}
-                      className="flex-1 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-bold hover:shadow-[0_0_30px_rgba(37,99,235,0.4)] disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                      className="flex-1 h-14 rounded-xl font-bold text-lg"
                     >
-                      {loading ? "Analyzing..." : result ? "Analysis Complete" : "Analyze Image"}
-                    </button>
+                      {!loading && (result ? "Analysis Complete" : "Analyze Image")}
+                    </Button>
                   </div>
                 </div>
               )}
