@@ -42,50 +42,59 @@ export function composeVerdict(input: VerdictComposeInput): ComposedVerdict {
   const opinion = clamp(input.opinion);
   const sarcasm = clamp(input.sarcasm);
   const confidence = clamp(input.confidence);
+  const engineVerdict = input.primaryVerdict;
 
-  if (ai >= 0.95 && truth < 0.7 && input.primaryVerdict !== "VERIFIED_FACT") {
+  if (opinion >= 0.62 && verifiability <= 0.62 && sarcasm < 0.58) {
     return {
-      label: "Likely AI-Generated Writing",
-      tone: "fuchsia",
-      explanation: "The writing style strongly resembles machine-generated patterns. Treat it as synthetic-style text unless independently verified.",
+      label: truth < 0.55 ? "Personal Review / Opinion" : "Subjective Experience",
+      tone: "sky",
+      explanation: "The text is dominated by personal perspective and subjective experience, so objective fact-verification is limited.",
     };
   }
 
-  if (opinion >= 0.6 && truth < 0.75 && verifiability < 0.65) {
+  if (truth < 0.25 && (bias > 0.8 || manipulation > 0.75)) {
     return {
-      label: "Opinion / Subjective Statement",
-      tone: "sky",
-      explanation: "The text leans on subjective judgment and preference language, so it should be read as perspective rather than a strictly checkable fact.",
+      label: "Biased / Manipulative Content",
+      tone: "rose",
+      explanation: "Very low truth alignment combined with extreme framing pressure indicates high-risk misinformation-style content.",
+    };
+  }
+
+  if (ai >= 0.9 && truth < 0.7 && engineVerdict !== "VERIFIED_FACT") {
+    return {
+      label: "AI-Generated Formal Writing",
+      tone: "fuchsia",
+      explanation: "The writing pattern strongly matches machine-generated formal prose. Verify origin and factual claims independently.",
     };
   }
 
   if (bias >= 0.6 && manipulation < 0.55) {
     return {
-      label: "Biased / Slanted Content",
+      label: "Biased / Manipulative Content",
       tone: "amber",
-      explanation: "The analysis detected loaded or one-sided framing that can shape interpretation even when parts of the text may still be factual.",
+      explanation: "Loaded framing and one-sided language are dominant, which can distort interpretation even when isolated facts are present.",
     };
   }
 
   if (truth >= 0.75 && verifiability >= 0.58 && bias < 0.45 && manipulation < 0.45 && opinion < 0.55 && sarcasm < 0.5) {
     return {
-      label: "Verified Fact",
+      label: "Factually Supported Statement",
       tone: "emerald",
-      explanation: "Core claims align with reliable evidence and are sufficiently verifiable.",
+      explanation: "The core claim aligns with strong factual signals and appears coherent with established knowledge.",
     };
   }
 
   if (truth >= 0.64 && verifiability < 0.58 && sarcasm < 0.55) {
     return {
-      label: "Likely True but Unverifiable",
+      label: "Unverifiable Claim",
       tone: "amber",
-      explanation: "The claim appears plausible, but available evidence is incomplete or not concrete enough for full verification.",
+      explanation: "The statement may be plausible, but current evidence is insufficient to verify it confidently.",
     };
   }
 
   if (truth <= 0.34 && verifiability >= 0.5) {
     return {
-      label: "Likely Misleading / False Claim",
+      label: "Likely False / Unsupported Claim",
       tone: "rose",
       explanation: "Evidence leans against the core claim, suggesting the statement is misleading or factually incorrect.",
     };
@@ -93,7 +102,7 @@ export function composeVerdict(input: VerdictComposeInput): ComposedVerdict {
 
   if (verifiability < 0.46 && truth < 0.64) {
     return {
-      label: "Unverified Claim",
+      label: "Unverifiable Claim",
       tone: "amber",
       explanation: "There is not enough reliable evidence to confidently confirm or reject this claim right now.",
     };
@@ -101,7 +110,7 @@ export function composeVerdict(input: VerdictComposeInput): ComposedVerdict {
 
   if ((sarcasm >= 0.58 && truth < 0.7) || (confidence < 0.45 && sarcasm > 0.45)) {
     return {
-      label: "Mixed / Ambiguous Analysis",
+      label: "Satirical / Non-Literal Framing",
       tone: "purple",
       explanation: "Sarcasm or rhetorical framing introduces ambiguity, so literal factual interpretation is less reliable.",
     };
@@ -118,16 +127,32 @@ export function composeVerdict(input: VerdictComposeInput): ComposedVerdict {
 
   if (mixedSignals >= 3) {
     return {
-      label: "Mixed / Ambiguous Analysis",
+      label: "Mixed Fact and Opinion",
       tone: "slate",
       explanation: "Multiple competing signals are present, so this text is best interpreted with nuance rather than a single hard category.",
     };
   }
 
+  if (engineVerdict === "FALSE_FACT" || engineVerdict === "CONSPIRACY_OR_EXTRAORDINARY_CLAIM") {
+    return {
+      label: "Likely False / Unsupported Claim",
+      tone: "rose",
+      explanation: "The engine detected contradiction or extraordinary-claim patterns that are not credibly supported.",
+    };
+  }
+
+  if (engineVerdict === "UNVERIFIED_CLAIM") {
+    return {
+      label: "Unverifiable Claim",
+      tone: "amber",
+      explanation: "The claim lacks enough trustworthy evidence to support a definitive factual decision.",
+    };
+  }
+
   const fallbackTone = input.primaryVerdict ? toneByEngineVerdict[input.primaryVerdict] ?? "slate" : "slate";
   return {
-    label: "Mixed / Ambiguous Analysis",
+    label: "Context-Dependent Analysis",
     tone: fallbackTone,
-    explanation: "Signals are not strong enough in one direction to give a definitive classification.",
+    explanation: "No single signal fully dominates, so this result reflects a balanced interpretation with residual uncertainty.",
   };
 }

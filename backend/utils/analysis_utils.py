@@ -34,6 +34,10 @@ MANIPULATION_VERDICT_THRESHOLD = 0.48
 # clearly AI-generated corporate prose with raw_model_ai ≥ 0.70 and 2+ prose markers
 # typically reaches 0.50-0.70; 0.95 was unreachably strict in practice.
 AI_VERDICT_THRESHOLD = 0.50
+MISINFORMATION_VERDICT_THRESHOLD = 0.64
+SEVERE_BIAS_THRESHOLD = 0.80
+SEVERE_MANIPULATION_THRESHOLD = 0.75
+SEVERE_LOW_TRUTH_THRESHOLD = 0.25
 
 # ---------------------------------------------------------------------------
 # Mixed-claim guard constants
@@ -79,6 +83,7 @@ def stage_route_primary_verdict(
     manipulation_score: float,
     conspiracy_flag: bool,
     ai_generated_score: float,
+    misinformation_score: float = 0.0,
     # Optional extra signals for mixed-claim detection
     sarcasm_score: float = 0.0,
     opinion_score: float = 0.0,
@@ -106,6 +111,10 @@ def stage_route_primary_verdict(
         "bias_verdict_threshold": BIAS_VERDICT_THRESHOLD,
         "manipulation_verdict_threshold": MANIPULATION_VERDICT_THRESHOLD,
         "ai_verdict_threshold": AI_VERDICT_THRESHOLD,
+        "misinformation_verdict_threshold": MISINFORMATION_VERDICT_THRESHOLD,
+        "severe_bias_threshold": SEVERE_BIAS_THRESHOLD,
+        "severe_manipulation_threshold": SEVERE_MANIPULATION_THRESHOLD,
+        "severe_low_truth_threshold": SEVERE_LOW_TRUTH_THRESHOLD,
     }
 
     def _base(verdict: str, rule: str, verifiability: str, locked: bool, why: str) -> Dict[str, Any]:
@@ -152,6 +161,14 @@ def stage_route_primary_verdict(
             "non_factual_extraordinary",
             False,
             "Extraordinary/conspiracy markers detected — classified before factual routing.",
+        )
+    if misinformation_score >= MISINFORMATION_VERDICT_THRESHOLD:
+        return _base(
+            "CONSPIRACY_OR_EXTRAORDINARY_CLAIM",
+            "STAGE_3_MISINFORMATION_EARLY",
+            "non_factual_extraordinary",
+            False,
+            f"Misinformation suspicion {misinformation_score:.2f} ≥ threshold {MISINFORMATION_VERDICT_THRESHOLD}.",
         )
     if bias_score >= BIAS_VERDICT_THRESHOLD:
         return _base(
@@ -286,7 +303,31 @@ def stage_route_primary_verdict(
                 f"Model truth score {model_truth_score:.2f} ≤ {MODEL_FALSE_THRESHOLD} for verifiable mixed claim (common misconception).",
             )
 
-    # Stage 6 — Mixed-claim guard: multiple medium-to-high signals with no clear winner
+    # Stage 6 — Consistency enforcement for severe contradictory combinations
+    if (
+        model_truth_score <= SEVERE_LOW_TRUTH_THRESHOLD
+        and bias_score >= SEVERE_BIAS_THRESHOLD
+    ):
+        return _base(
+            "BIASED_CONTENT",
+            "STAGE_6_CONSISTENCY_SEVERE_BIAS",
+            "non_factual_biased",
+            False,
+            f"Consistency guard: very low truth ({model_truth_score:.2f}) with extreme bias ({bias_score:.2f}).",
+        )
+    if (
+        model_truth_score <= SEVERE_LOW_TRUTH_THRESHOLD
+        and manipulation_score >= SEVERE_MANIPULATION_THRESHOLD
+    ):
+        return _base(
+            "MANIPULATIVE_CONTENT",
+            "STAGE_6_CONSISTENCY_SEVERE_MANIPULATION",
+            "non_factual_manipulative",
+            False,
+            f"Consistency guard: very low truth ({model_truth_score:.2f}) with severe manipulation ({manipulation_score:.2f}).",
+        )
+
+    # Stage 7 — Mixed-claim guard: multiple medium-to-high signals with no clear winner
     # Prefer MIXED_ANALYSIS over forcing a single category on multi-clause / nuanced text.
     # Uses MIXED_SIGNAL_MEDIUM_THRESHOLD (0.40) as the "medium-strength" bar for each
     # dimension; sarcasm uses MIXED_SARCASM_MEDIUM_THRESHOLD (0.35) because the sarcasm
@@ -311,7 +352,7 @@ def stage_route_primary_verdict(
             f"Multiple medium-strength signals ({signal_count}) without a dominant category — prefer MIXED_ANALYSIS.",
         )
 
-    # Stage 7 — AI verdict only at high confidence — purely informational otherwise
+    # Stage 8 — AI verdict only at high confidence — purely informational otherwise
     if ai_generated_score >= AI_VERDICT_THRESHOLD:
         return _base(
             "LIKELY_AI_GENERATED",

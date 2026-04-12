@@ -26,7 +26,9 @@ import { ScoreCardGrid } from "./result/score-card-grid";
 import { MetricModal } from "./result/metric-modal";
 import { NewsVerificationPanel } from "./result/news-verification-panel";
 
-const METRIC_VISIBILITY_THRESHOLD = 0.18;
+const METRIC_VISIBILITY_THRESHOLD = 0.24;
+const METRIC_RELEVANCE_THRESHOLD = 0.95;
+const MAX_VISIBLE_TEXT_METRICS = 6;
 const IMAGE_SIGNAL_VISIBILITY_THRESHOLD = 0.28;
 const MAX_PROMINENT_IMAGE_METRICS = 4;
 
@@ -370,7 +372,9 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         break;
     }
 
-    const visible = baseMetrics.filter((metric) => critical.has(metric.key) || metric.score >= METRIC_VISIBILITY_THRESHOLD);
+    const visible = baseMetrics.filter(
+      (metric) => critical.has(metric.key) || (metric.score >= METRIC_VISIBILITY_THRESHOLD && metric.relevance >= METRIC_RELEVANCE_THRESHOLD),
+    );
 
     const anchorOrder: Record<MetricKey, number> = {
       truth: 0,
@@ -392,7 +396,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
 
       if (b.relevance !== a.relevance) return b.relevance - a.relevance;
       return b.score - a.score;
-    });
+    }).slice(0, MAX_VISIBLE_TEXT_METRICS);
   }, [
     result.expanded_analysis,
     result.debug,
@@ -484,9 +488,9 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="space-y-6"
+      className="space-y-7 sm:space-y-8"
     >
-      <div className={`p-8 rounded-[2rem] ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-3xl relative overflow-hidden group transition-all duration-500 hover:shadow-2xl`}>
+      <div className={`p-6 sm:p-8 md:p-10 rounded-[2rem] ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-3xl relative overflow-hidden group transition-all duration-500 hover:shadow-2xl`}>
         <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-all duration-700 -rotate-12 translate-x-8 -translate-y-8">
           {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-48 h-48" /> : <VerdictIcon className="w-48 h-48" />; })()}
         </div>
@@ -522,7 +526,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             </div>
           </div>
 
-          <div className="xl:w-[320px] rounded-[2rem] border border-white/10 bg-black/40 p-8 space-y-5 backdrop-blur-2xl shadow-inner relative overflow-hidden group/conf">
+          <div className="xl:w-[320px] rounded-[2rem] border border-white/10 bg-black/40 p-6 sm:p-8 space-y-5 backdrop-blur-2xl shadow-inner relative overflow-hidden group/conf">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover/conf:opacity-100 transition-opacity" />
             <div className="relative z-10">
               <div className="flex items-baseline justify-between mb-2">
@@ -558,11 +562,11 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       )}
 
       {!result.category && (
-        <div className="glass rounded-3xl border border-white/10 p-5 sm:p-6 space-y-5">
+        <div className="glass rounded-3xl border border-white/10 p-5 sm:p-6 md:p-7 space-y-5 sm:space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Signal cards</h3>
-              <p className="text-xs text-white/45">Showing {metrics.length} of 7 metrics based on relevance and transparency rules.</p>
+              <p className="text-xs text-white/45">Showing {metrics.length} high-impact metrics after relevance filtering.</p>
             </div>
           </div>
           <ScoreCardGrid metrics={metrics} onOpenMetric={setActiveMetric} />
@@ -605,7 +609,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       )}
 
       {!result.category && (
-        <div className="glass rounded-3xl border border-white/10 p-6 space-y-4">
+        <div className="glass rounded-3xl border border-white/10 p-6 md:p-7 space-y-4 sm:space-y-5">
           <div className="flex items-center gap-2">
             <Info className="w-4 h-4 text-blue-400" />
             <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Signal hierarchy</h3>
@@ -641,14 +645,14 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       )}
 
-      <div className="glass rounded-3xl border border-white/10 p-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="glass rounded-3xl border border-white/10 p-6 md:p-8">
+        <div className="flex items-center gap-2 mb-5">
           <Info className="w-4 h-4 text-emerald-400" />
           <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
             {result.category ? "Forensic Analysis Report" : "Analysis Narrative"}
           </h3>
         </div>
-        <p className="text-white/70 text-sm leading-relaxed mb-6 italic">{`"${result.explanation}"`}</p>
+        <p className="text-white/75 text-sm sm:text-[15px] leading-relaxed mb-6">{result.explanation}</p>
 
         {!result.category && result.signals && result.signals.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-white/5">

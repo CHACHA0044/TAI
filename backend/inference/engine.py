@@ -429,6 +429,88 @@ Return valid JSON ONLY (no markdown blocks):
         return any(marker in text for marker in markers)
 
     @staticmethod
+    def _detect_misinformation_signal(content: str) -> dict:
+        text = (content or "").lower()
+        phrase_weights = {
+            "scientists proved": 0.35,
+            "experts confirmed": 0.35,
+            "secret report says": 0.40,
+            "doctors hate this": 0.45,
+            "cures all": 0.55,
+            "miracle cure": 0.42,
+            "guaranteed cure": 0.44,
+            "breaking news they won't show": 0.40,
+            "what they're hiding": 0.34,
+        }
+        hits = [phrase for phrase in phrase_weights if phrase in text]
+        score = sum(phrase_weights[h] for h in hits)
+
+        if re.search(r"\b(cure|cures|reverse|reverses|prevent|prevents)\b.{0,30}\b(all|every|any)\b", text):
+            score += 0.40
+            hits.append("absolute_medical_claim")
+
+        if re.search(r"\b(scientists|experts|researchers)\b.{0,30}\b(proved|confirmed|discovered)\b", text):
+            source_cues = ["according to", "published in", "peer-reviewed", "journal", "source:"]
+            if not any(cue in text for cue in source_cues):
+                score += 0.25
+                hits.append("authority_claim_without_source")
+
+        if re.search(r"\b(secret|hidden)\s+(report|study|document)\b", text):
+            score += 0.22
+            hits.append("hidden_report_claim")
+
+        return {
+            "score": round(min(1.0, score), 4),
+            "hits": hits[:8],
+        }
+
+    @staticmethod
+    def _estimate_common_knowledge_confidence(
+        content: str,
+        *,
+        claim_type: str,
+        claim_verifiable: bool,
+        opinion_detected: bool,
+        bias_score: float,
+        manipulation_score: float,
+        misinformation_score: float,
+        conspiracy_flag: bool,
+    ) -> float:
+        if claim_type not in {"FACTUAL_CLAIM", "MIXED"}:
+            return 0.0
+        if (
+            not claim_verifiable
+            or opinion_detected
+            or bias_score >= 0.50
+            or manipulation_score >= 0.50
+            or misinformation_score >= 0.35
+            or conspiracy_flag
+        ):
+            return 0.0
+
+        text = (content or "").lower()
+        core_domains = [
+            "earth", "moon", "sun", "gravity", "atmosphere", "planet", "solar system",
+            "human body", "cells", "blood", "water", "photosynthesis", "history",
+            "century", "temperature", "science", "species", "ocean", "climate",
+        ]
+        domain_hits = sum(1 for token in core_domains if token in text)
+        declarative = bool(re.search(r"\b(is|are|was|were|has|have)\b", text))
+        numeric_anchor = bool(re.search(r"\b\d{1,4}\b", text))
+        sensational = bool(re.search(r"\b(shocking|secret|hidden|miracle|guaranteed|everyone knows)\b", text))
+
+        if not declarative or sensational:
+            return 0.0
+
+        confidence = 0.20
+        confidence += min(0.45, domain_hits * 0.12)
+        if numeric_anchor:
+            confidence += 0.15
+        if re.search(r"\b(established|well-known|widely accepted|fundamental)\b", text):
+            confidence += 0.12
+        return min(1.0, confidence)
+
+    @staticmethod
     def _summarize_trust_signals(verification_signals: list) -> dict:
         if not verification_signals:
             return {
@@ -695,6 +777,9 @@ Return valid JSON ONLY (no markdown blocks):
         bias_score = self._sanitize(max(float(bias_score), float(bias_signal.get("score", 0.0))))
         manipulation_signal = detect_manipulation(content, style_metrics)
         manipulation_score = self._sanitize(float(manipulation_signal.get("score", 0.0)))
+        misinformation_signal = self._detect_misinformation_signal(content)
+        misinformation_score = self._sanitize(float(misinformation_signal.get("score", 0.0)))
+        conspiracy_flag = conspiracy_flag or misinformation_score >= 0.78
         factual_claim = claim_type == "FACTUAL_CLAIM"
         trust_summary = self._summarize_trust_signals(verification_signals)
 
@@ -732,6 +817,24 @@ Return valid JSON ONLY (no markdown blocks):
         else:
             final_truth_score = self._sanitize(truth_score)
 
+        # Penalize extraordinary unsupported medical/scientific/news-style claims.
+        if misinformation_score > 0.0:
+            final_truth_score = self._sanitize(final_truth_score - (0.16 + (0.24 * misinformation_score)))
+
+        # Boost common educational/scientific/historical factual statements when coherent.
+        knowledge_confidence = self._estimate_common_knowledge_confidence(
+            content,
+            claim_type=claim_type,
+            claim_verifiable=bool(verifiability.get("claim_verifiable", True)),
+            opinion_detected=bool(verifiability.get("opinion_detected", False)),
+            bias_score=bias_score,
+            manipulation_score=manipulation_score,
+            misinformation_score=misinformation_score,
+            conspiracy_flag=conspiracy_flag,
+        )
+        if knowledge_confidence > 0:
+            final_truth_score = self._sanitize(final_truth_score + (0.06 + (0.12 * knowledge_confidence)))
+
         # AI Likelihood MUST NOT lower the Truth Score. Removed legacy penalty logic.
 
         # Confidence: distance of final truth from the midpoint, clamped to [0.4, 0.95]
@@ -760,6 +863,7 @@ Return valid JSON ONLY (no markdown blocks):
             manipulation_score=manipulation_score,
             conspiracy_flag=conspiracy_flag,
             ai_generated_score=ai_generated_score,
+            misinformation_score=misinformation_score,
             sarcasm_score=sarcasm_score_val,
             opinion_score=opinion_score_val,
             model_truth_score=final_truth_score,
@@ -807,6 +911,9 @@ Return valid JSON ONLY (no markdown blocks):
             "claim_type_scores": claim_type_signal.get("scores", {}),
             "bias_indicators": bias_signal.get("indicators", []),
             "manipulation_indicators": manipulation_signal.get("indicators", []),
+            "misinformation_hits": misinformation_signal.get("hits", []),
+            "misinformation_score": round(misinformation_score, 4),
+            "knowledge_confidence_boost": round(knowledge_confidence, 4),
             "trust_agent_confidence": trust_summary["trust_agent_confidence"],
             "retrieval_support_score": round(trust_summary["retrieval_support_score"], 4),
             "retrieval_contradiction_score": round(trust_summary["retrieval_contradiction_score"], 4),
@@ -816,6 +923,7 @@ Return valid JSON ONLY (no markdown blocks):
             claim_type=claim_type,
             verifiability=verifiability,
             trust_summary=trust_summary,
+            misinformation_score=misinformation_score,
         )
         dimensions = {
             "truth_score": int(round(final_truth_score * 100)),
@@ -864,23 +972,28 @@ Return valid JSON ONLY (no markdown blocks):
                 "opinion_score": round(opinion_score_val, 4),
                 "retrieval_support": round(trust_summary["retrieval_support_score"], 4),
                 "retrieval_contradiction": round(trust_summary["retrieval_contradiction_score"], 4),
+                "misinformation_score": round(misinformation_score, 4),
+                "knowledge_confidence_boost": round(knowledge_confidence, 4),
             },
             "trust_support_margin": routing.get("trust_support_margin", 0.0),
             "contradiction_margin": routing.get("contradiction_margin", 0.0),
             "sarcasm_rule_hits": sarcasm_signal.get("sarcasm_rule_hits", []),
             "bias_rule_hits": bias_signal.get("bias_rule_hits", []),
-            "manipulation_rule_hits": manipulation_signal.get("manipulation_rule_hits", []),
-            "raw_intermediate_scores": {
-                "truth_score": round(float(final_truth_score), 4),
-                "verifiability": round(verifiability_score, 4),
-                "ai_likelihood_score": round(float(ai_generated_score), 4),
-                "bias_score": round(float(bias_score), 4),
-                "manipulation_score": round(float(manipulation_score), 4),
-                "sarcasm_score": round(sarcasm_score_val, 4),
-                "opinion_score": round(opinion_score_val, 4),
-                "conspiracy_flag": bool(conspiracy_flag),
-                "claim_type": claim_type,
-            },
+                "manipulation_rule_hits": manipulation_signal.get("manipulation_rule_hits", []),
+                "misinformation_hits": misinformation_signal.get("hits", []),
+                "raw_intermediate_scores": {
+                    "truth_score": round(float(final_truth_score), 4),
+                    "verifiability": round(verifiability_score, 4),
+                    "ai_likelihood_score": round(float(ai_generated_score), 4),
+                    "bias_score": round(float(bias_score), 4),
+                    "manipulation_score": round(float(manipulation_score), 4),
+                    "misinformation_score": round(float(misinformation_score), 4),
+                    "knowledge_confidence_boost": round(float(knowledge_confidence), 4),
+                    "sarcasm_score": round(sarcasm_score_val, 4),
+                    "opinion_score": round(opinion_score_val, 4),
+                    "conspiracy_flag": bool(conspiracy_flag),
+                    "claim_type": claim_type,
+                },
         }
 
         # Only expose news_consistency_score if it's statistically significant (>0.35)
@@ -904,6 +1017,8 @@ Return valid JSON ONLY (no markdown blocks):
                 manipulation_score=manipulation_score,
                 sarcasm_detected=sarcasm_detected,
                 opinion_detected=bool(verifiability.get("opinion_detected", False)),
+                misinformation_score=misinformation_score,
+                knowledge_confidence=knowledge_confidence,
             ),
             "features": {
                 "perplexity": round(raw_features.get("perplexity", 0), 1),
@@ -1005,6 +1120,7 @@ Return valid JSON ONLY (no markdown blocks):
         claim_type: str,
         verifiability: dict,
         trust_summary: dict,
+        misinformation_score: float = 0.0,
     ) -> float:
         """Continuous verifiability score derived from claim type, signals, and retrieval."""
         claim_verifiable = bool(verifiability.get("claim_verifiable", True))
@@ -1032,6 +1148,9 @@ Return valid JSON ONLY (no markdown blocks):
             base = 0.25
         else:
             base = 0.45 + (0.10 * min(1.0, support))
+
+        if misinformation_score >= 0.35:
+            base -= 0.14 + (0.16 * misinformation_score)
 
         return self._sanitize(base)
 
@@ -1281,7 +1400,8 @@ Return valid JSON ONLY (no markdown blocks):
 
     def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None,
                               primary_verdict=None, claim_type=None, manipulation_score=0.0,
-                              sarcasm_detected=False, opinion_detected=False):
+                              sarcasm_detected=False, opinion_detected=False,
+                              misinformation_score=0.0, knowledge_confidence=0.0):
         """Context-aware forensic narrative aligned with the primary verdict."""
         parts = []
         verdict = primary_verdict or "MIXED_ANALYSIS"
@@ -1299,8 +1419,8 @@ Return valid JSON ONLY (no markdown blocks):
             )
         elif verdict == "OPINION":
             parts.append(
-                "This text expresses a subjective opinion or personal value judgment rather than a verifiable fact. "
-                "Factual truth-scoring does not apply to opinion statements."
+                "This text is primarily a personal opinion or subjective experience rather than a checkable factual claim. "
+                "The engine prioritised opinion cues (first-person framing, value language, and preference signals)."
             )
         elif verdict == "SATIRE_OR_SARCASM":
             parts.append(
@@ -1342,6 +1462,17 @@ Return valid JSON ONLY (no markdown blocks):
         if truth_reasoning and verdict not in {"OPINION", "SATIRE_OR_SARCASM"}:
             parts.append(truth_reasoning)
 
+        if misinformation_score >= 0.45:
+            parts.append(
+                "The text also includes high-risk misinformation patterns (e.g., unsupported authority claims, "
+                "extraordinary medical/scientific framing, or hidden-report rhetoric), which reduced trust in the claim."
+            )
+        elif knowledge_confidence >= 0.50 and verdict == "VERIFIED_FACT":
+            parts.append(
+                "A knowledge-confidence boost was applied because the statement matches coherent, widely accepted "
+                "educational/scientific or historical knowledge patterns."
+            )
+
         # --- AI authorship note ---
         if expert_reasoning and ai > 0.50:
             parts.append(expert_reasoning)
@@ -1364,6 +1495,11 @@ Return valid JSON ONLY (no markdown blocks):
         if bias > 0.60 and verdict not in {"BIASED_CONTENT", "MANIPULATIVE_CONTENT", "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"}:
             parts.append(
                 "Additionally, loaded or partisan framing was detected — consider this when evaluating the neutrality of the source."
+            )
+
+        if 0.42 <= truth <= 0.58 and verdict in {"MIXED_ANALYSIS", "UNVERIFIED_CLAIM"}:
+            parts.append(
+                "Uncertainty remains because the strongest signals are close in strength; this verdict reflects that ambiguity."
             )
 
         return " ".join(parts)
