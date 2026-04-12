@@ -31,10 +31,17 @@ export function ScoreCardGrid({ metrics, onOpenMetric }: ScoreCardGridProps) {
   const rows = layoutRows(metrics);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-stretch">
-      {metrics.map((metric) => (
-        <div key={metric.key} className="w-full flex">
-          <MetricCard metric={metric} onOpen={onOpenMetric} />
+    <div className="space-y-6">
+      {rows.map((row, rowIndex) => (
+        <div
+          key={`row-${rowIndex}`}
+          className={`flex flex-wrap gap-6 ${row.length < 3 ? "justify-center" : "justify-start"}`}
+        >
+          {row.map((metric) => (
+            <div key={metric.key} className={`flex ${getCardWidthClass(row.length, metrics.length)}`}>
+              <MetricCard metric={metric} onOpen={onOpenMetric} />
+            </div>
+          ))}
         </div>
       ))}
     </div>

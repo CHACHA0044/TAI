@@ -260,6 +260,7 @@ class AnalysisResponse(BaseModel):
     top_signals: Optional[List[str]] = None
     rejected_verdicts: Optional[List[str]] = None
     authenticity_signals: Optional[dict] = None
+    video_forensics: Optional[dict] = None
     why: Optional[str] = None
     if_uncertain: Optional[str] = None
     # Rich analysis fields

@@ -68,7 +68,14 @@ export interface AnalysisResult {
     | "DIGITAL_ARTWORK_ILLUSTRATION"
     | "HAND_DRAWN_SKETCH_ARTWORK"
     | "EDITED_MANIPULATED_IMAGE"
-    | "COMPOSITE_POTENTIAL_DEEPFAKE";
+    | "COMPOSITE_POTENTIAL_DEEPFAKE"
+    | "Authentic Human Video"
+    | "Likely Real Recorded Footage"
+    | "AI-Generated Synthetic Video"
+    | "Deepfake / Face Manipulation Suspected"
+    | "CGI / Rendered Animation"
+    | "Edited / Post-Processed Footage"
+    | "Uncertain / Needs Review";
   source?: string;
   scene_description?: string;
   detected_objects?: string[];
@@ -105,6 +112,18 @@ export interface AnalysisResult {
   news_verification?: NewsVerification;
   ocr_text?: string;
   frame_scores?: number[];
+  video_forensics?: {
+    authenticity_score: number;
+    deepfake_risk: number;
+    temporal_consistency: number;
+    motion_integrity: number;
+    face_stability: number;
+    lip_sync_match: number;
+    audio_authenticity: number;
+    compression_consistency: number;
+    flicker_risk?: number;
+    scene_class?: string;
+  };
 }
 
 export interface NewsArticle {
