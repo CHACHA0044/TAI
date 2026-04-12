@@ -27,6 +27,8 @@ class ImageEngineForensicsTests(unittest.TestCase):
         )
         self.assertEqual(verdict, "AI_GENERATED_SYNTHETIC_IMAGE")
         self.assertIn(triggered_rule, {"strong_ai_artifacts", "ai_signals_dominate"})
+        # Staged fusion can still classify AI-generated when AI dominates edit markers,
+        # even if aggregate AI likelihood is below the hard 0.74 shortcut threshold.
         self.assertGreaterEqual(aggregates["ai_likelihood"], 0.70)
         self.assertGreaterEqual(confidence, 0.0)
 

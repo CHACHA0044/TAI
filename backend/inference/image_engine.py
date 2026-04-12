@@ -5,12 +5,17 @@ import os
 import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageStat
 
 from utils.analysis_utils import get_verdict_and_risk
 
 logger = logging.getLogger("truthguard")
+OBJECT_DETECTION_CONFIDENCE_THRESHOLD = 0.28
+LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD = 0.80
+AUTHENTIC_PHOTO_THRESHOLD = 0.78
+LIKELY_REAL_PHOTO_THRESHOLD = 0.62
+VERDICT_AMBIGUITY_MARGIN = 0.08
 
 
 def _mean(values: List[float]) -> float:
@@ -275,7 +280,7 @@ class ImageEngine:
     def _infer_detected_objects(self, top_predictions: List[Tuple[str, float]], ocr_text: str) -> List[str]:
         candidates: List[str] = []
         for label, confidence in top_predictions:
-            if confidence < 0.28:
+            if confidence < OBJECT_DETECTION_CONFIDENCE_THRESHOLD:
                 continue
             clean = label.replace("_", " ").replace("-", " ").strip()
             parts = [p.strip() for p in clean.split(",") if p.strip()]
@@ -401,13 +406,13 @@ class ImageEngine:
             normalized = label.replace("_", " ").lower()
             for name, patterns in landmark_patterns.items():
                 if any(re.search(pattern, normalized) for pattern in patterns):
-                    if confidence >= 0.80 and confidence > best_confidence:
+                    if confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD and confidence > best_confidence:
                         best_name = name
                         best_confidence = confidence
                     elif confidence >= 0.4:
                         fallback_entities.append("landmark structure")
 
-            if confidence >= 0.80:
+            if confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD:
                 fallback_entities.append(label.replace("_", " "))
             elif confidence >= 0.45:
                 fallback_entities.append("identified object")
@@ -416,11 +421,11 @@ class ImageEngine:
             for name, patterns in landmark_patterns.items():
                 if any(re.search(pattern, text_blob) for pattern in patterns):
                     best_name = name
-                    best_confidence = 0.80
+                    best_confidence = LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD
                     break
 
         deduped_entities = list(dict.fromkeys(entity for entity in fallback_entities if entity))[:6]
-        return best_name if best_confidence >= 0.80 else None, deduped_entities
+        return best_name if best_confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD else None, deduped_entities
 
     def _compute_forensic_signals(
         self,
@@ -547,7 +552,7 @@ class ImageEngine:
         neural_confidence: float,
     ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, float], List[str], List[str]]:
         weighted = dict(raw_scores)
-        technical_only: set[str] = set()
+        technical_only: Set[str] = set()
 
         context_scale = {
             "REAL_PHOTO": 1.0,
@@ -651,15 +656,15 @@ class ImageEngine:
         else:
             camera_bonus = 0.09 if metadata_evidence.get("has_camera_indicators") else 0.0
             real_score = ((1.0 - ai_likelihood) * 0.58) + ((1.0 - edit_likelihood) * 0.32) + camera_bonus
-            if real_score >= 0.78:
+            if real_score >= AUTHENTIC_PHOTO_THRESHOLD:
                 verdict = "AUTHENTIC_REAL_PHOTOGRAPH"
                 triggered_rule = "camera_consistent_real_photo"
                 rejected = ["AI-Generated Synthetic Image", "Edited / Manipulated Image"]
-            elif real_score >= 0.62:
+            elif real_score >= LIKELY_REAL_PHOTO_THRESHOLD:
                 verdict = "LIKELY_REAL_CAMERA_PHOTO"
                 triggered_rule = "real_photo_with_limited_noise"
                 rejected = ["AI-Generated Synthetic Image"]
-            elif abs(ai_likelihood - edit_likelihood) < 0.08:
+            elif abs(ai_likelihood - edit_likelihood) < VERDICT_AMBIGUITY_MARGIN:
                 verdict = "UNCERTAIN"
                 triggered_rule = "conflicting_or_weak_signals"
                 rejected = ["Authentic Real Photograph", "AI-Generated Synthetic Image"]

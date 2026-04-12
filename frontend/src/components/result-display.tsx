@@ -26,6 +26,8 @@ import { ScoreCardGrid } from "./result/score-card-grid";
 import { MetricModal } from "./result/metric-modal";
 
 const METRIC_VISIBILITY_THRESHOLD = 0.18;
+const IMAGE_SIGNAL_VISIBILITY_THRESHOLD = 0.28;
+const MAX_PROMINENT_IMAGE_METRICS = 4;
 
 interface ResultDisplayProps {
   result: AnalysisResult;
@@ -446,7 +448,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           technicalOnly: !!value?.technical_only,
         } as MetricCardData;
       })
-      .filter((metric) => metric.score >= 0.28 || metric.technicalOnly)
+      .filter((metric) => metric.score >= IMAGE_SIGNAL_VISIBILITY_THRESHOLD || metric.technicalOnly)
       .sort((a, b) => b.relevance - a.relevance);
   }, [result.category, result.authenticity_signals, confidence]);
 
@@ -456,11 +458,11 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
   const imageConfidencePercent = result.confidence !== undefined
     ? Math.round(result.confidence)
     : Math.round(result.confidence_score * 100);
-  const prominentImageMetrics = imageMetrics.filter((metric) => !metric.technicalOnly).slice(0, 4);
+  const prominentImageMetrics = imageMetrics.filter((metric) => !metric.technicalOnly).slice(0, MAX_PROMINENT_IMAGE_METRICS);
   const technicalImageMetrics = imageMetrics.filter((metric) => metric.technicalOnly);
 
   useEffect(() => {
-    if (!imageModalOpen || !result.category) return;
+    if (!imageModalOpen) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -475,7 +477,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleEscape);
     };
-  }, [imageModalOpen, result.category]);
+  }, [imageModalOpen]);
 
   return (
     <motion.div
@@ -755,6 +757,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setImageModalOpen(false)}
+            aria-label="Close modal"
           >
             <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
             <motion.div
