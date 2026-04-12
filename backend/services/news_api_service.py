@@ -25,7 +25,7 @@ import re
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import requests
 
@@ -41,6 +41,15 @@ NEWSAPI_MAX_RESULTS = 5      # articles to fetch per query
 CACHE_TTL_SECONDS = 43_200   # 12 hours
 DAILY_QUOTA = 95             # leave a 5-request safety buffer from the 100-limit
 QUOTA_EXCEEDED_MSG = "External news verification unavailable (quota exhausted)."
+MAX_QUERY_KEYWORDS = 6       # maximum terms in an optimised search query
+MAX_ENTITY_KEYWORDS = 3      # highest-priority entity slots in query
+# Corroboration score adjustment constants:
+#   Corroboration is centred at 0.50 (neutral baseline — neither supports nor contradicts).
+#   A fully corroborating result shifts the midpoint toward 1.0 and vice-versa.
+#   The multiplier (0.12) limits the influence to ±0.06 per analysis pass to
+#   prevent a single news check from dominating the model-based truth score.
+NEWS_CORROBORATION_MIDPOINT = 0.50
+NEWS_CORROBORATION_MULTIPLIER = 0.12
 
 # File paths (relative to this file → under backend/)
 _BASE_DIR = Path(__file__).parent.parent
@@ -168,7 +177,7 @@ def _increment_quota() -> None:
 def _extract_named_entities(text: str) -> List[str]:
     """Very lightweight NER: consecutive capitalised tokens (no model needed)."""
     tokens = re.findall(r"\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*\b", text)
-    seen: dict[str, int] = {}
+    seen: Dict[str, int] = {}
     for t in tokens:
         seen[t] = seen.get(t, 0) + 1
     # Return multi-word or repeated single-word entities first
@@ -184,7 +193,7 @@ def _build_optimised_query(text: str) -> str:
     words = re.findall(r"\b[a-zA-Z]{3,}\b", text[:300])
     content_words = [w for w in words if w.lower() not in STOPWORDS and not any(e.lower().startswith(w.lower()) for e in entities)]
     # Deduplicate preserving order
-    seen: set[str] = set()
+    seen: Set[str] = set()
     unique_content: List[str] = []
     for w in content_words:
         key = w.lower()
@@ -192,9 +201,9 @@ def _build_optimised_query(text: str) -> str:
             seen.add(key)
             unique_content.append(w)
 
-    # Combine: entities first, then up to 4 content words
-    parts = entities[:3] + unique_content[:max(1, 6 - len(entities))]
-    query = " ".join(parts[:6])
+    # Combine: entities first, then up to remaining content words
+    parts = entities[:MAX_ENTITY_KEYWORDS] + unique_content[:max(1, MAX_QUERY_KEYWORDS - len(entities))]
+    query = " ".join(parts[:MAX_QUERY_KEYWORDS])
     logger.debug(f"NewsAPI optimised query: {query!r}")
     return query
 
@@ -401,8 +410,11 @@ class NewsAPIService:
             label = "No corroborating reporting found"
             message = "No corroborating reporting found."
 
-        # Naïve contradiction check: if top score is low but there are many
-        # articles, some may be contradicting the claim (heuristic only).
+        # Naïve contradiction heuristic: when the best semantic similarity is very
+        # low (< 0.30) but NewsAPI returned several articles on the same topic, it
+        # suggests the query matched a news cluster that diverges from the claim —
+        # a weak signal that major reporting contradicts (or simply does not match)
+        # the user's statement. This is a heuristic, not a definitive fact-check.
         contradiction_detected = best_score < 0.30 and len(articles) >= 3
 
         if contradiction_detected:

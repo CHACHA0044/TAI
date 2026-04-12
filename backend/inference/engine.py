@@ -33,7 +33,11 @@ except Exception:
 
 from services.trust_agents import TrustAgent
 from services.news_search_agent import NewsSearchAgent
-from services.news_api_service import get_news_api_service
+from services.news_api_service import (
+    get_news_api_service,
+    NEWS_CORROBORATION_MIDPOINT,
+    NEWS_CORROBORATION_MULTIPLIER,
+)
 from services.sarcasm_detector import SarcasmDetector
 from services.verifiability import assess_claim_verifiability
 from services.claim_type_detector import classify_claim_type
@@ -711,8 +715,9 @@ Return valid JSON ONLY (no markdown blocks):
         # Feed NewsAPI corroboration into credibility signal if available
         _news_corroboration = (news_verification or {}).get("corroboration_score")
         if _news_corroboration is not None and claim_type in {"FACTUAL_CLAIM", "MIXED"}:
-            # Positive corroboration boosts truth_score slightly; contradiction penalises
-            _news_adj = (_news_corroboration - 0.50) * 0.12   # ±0.06 max shift
+            # Corroboration > midpoint boosts truth_score; below midpoint slightly penalises.
+            # Multiplier caps influence to ±NEWS_CORROBORATION_MULTIPLIER/2 per pass.
+            _news_adj = (_news_corroboration - NEWS_CORROBORATION_MIDPOINT) * NEWS_CORROBORATION_MULTIPLIER
             truth_score = self._sanitize(truth_score + _news_adj)
 
         # 5. Fusion & self-check (STRICTLY INDEPENDENT)
