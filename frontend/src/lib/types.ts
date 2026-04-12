@@ -79,6 +79,9 @@ export interface AnalysisResult {
   top_signals?: string[];
   rejected_verdicts?: string[];
   authenticity_signals?: Record<string, { score: number; bucket: "LOW" | "MEDIUM" | "HIGH"; explanation?: string; technical_only?: boolean }>;
+  generator_attribution?: { name: string; confidence: number } | null;
+  confidence_band?: string;
+  suspicion_score?: number;
   why?: string;
   if_uncertain?: string | null;
   metadata: {
@@ -89,6 +92,12 @@ export interface AnalysisResult {
     capture_timestamp?: string | null;
     capture_location?: string | null;
     raw_metadata?: Record<string, unknown>;
+    image_width?: number;
+    image_height?: number;
+    file_type?: string;
+    has_exif?: boolean;
+    compression_quality?: string;
+    editing_software?: string | null;
   };
   // Extended forensics fields
   audio_score?: number;
