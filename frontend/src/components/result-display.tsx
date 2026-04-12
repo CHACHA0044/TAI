@@ -354,6 +354,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
     const anchors: MetricKey[] = ["truth", "verifiability"];
     const critical = new Set<MetricKey>(anchors);
 
+    if (aiLikelihood >= 0.35) {
+      critical.add("ai");
+    }
+
     switch (result.primary_verdict) {
       case "BIASED_CONTENT":
         critical.add("bias");
