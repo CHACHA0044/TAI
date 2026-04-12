@@ -425,42 +425,56 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-6"
     >
-      <div className={`p-6 rounded-3xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-xl relative overflow-hidden group`}>
-        <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-24 h-24" /> : <VerdictIcon className="w-24 h-24" />; })()}
+      <div className={`p-8 rounded-[2rem] ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-3xl relative overflow-hidden group transition-all duration-500 hover:shadow-2xl`}>
+        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-all duration-700 -rotate-12 translate-x-8 -translate-y-8">
+          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-48 h-48" /> : <VerdictIcon className="w-48 h-48" />; })()}
         </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className={`p-4 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-lg`}>
-              {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className={`w-8 h-8 ${categoryVerdict!.color}`} /> : <VerdictIcon className={`w-8 h-8 ${verdictStyle.color}`} />; })()}
+        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center gap-10">
+          <div className="flex items-start gap-6 flex-1 min-w-0">
+            <div className={`p-5 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-2xl flex-shrink-0`}>
+              {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className={`w-10 h-10 ${categoryVerdict!.color}`} /> : <VerdictIcon className={`w-10 h-10 ${verdictStyle.color}`} />; })()}
             </div>
 
-            <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Forensic verdict summary</p>
-              <h2 className={`text-3xl font-black tracking-tight ${result.category && categoryVerdict ? categoryVerdict.color : verdictStyle.color}`}>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-3 ml-0.5">Forensic Analysis Verdict</p>
+              <h2 className={`text-3xl md:text-4xl font-black tracking-tight leading-none ${result.category && categoryVerdict ? categoryVerdict.color : verdictStyle.color}`}>
                 {result.category && categoryVerdict ? categoryVerdict.label : composedVerdict.label}
               </h2>
-              <p className="text-sm text-white/70 mt-2 max-w-2xl">
+              <p className="text-base text-white/70 mt-4 max-w-2xl leading-relaxed">
                 {result.category
-                  ? (result.why || result.scene_description || "Layered forensic checks were applied across metadata and model signals.")
+                  ? (result.why || result.scene_description || "Detailed forensic evaluation completed across pixel-level and neural detection layers.")
                   : composedVerdict.explanation}
               </p>
-              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-black/20 text-[11px] text-white/70">
-                <span className="uppercase tracking-wider text-white/45">Engine verdict</span>
-                <span className="font-mono">{result.primary_verdict || "N/A"}</span>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] text-white/80 font-bold backdrop-blur-md">
+                  <span className="uppercase tracking-widest text-white/40 text-[9px]">Decision Engine</span>
+                  <span className="font-mono text-cyan-400">{result.primary_verdict || "HYBRID_CORE"}</span>
+                </div>
+                {result.metadata?.model && (
+                  <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] text-white/80 font-bold backdrop-blur-md">
+                    <span className="uppercase tracking-widest text-white/40 text-[9px]">Active Layer</span>
+                    <span className="font-mono text-blue-400">{result.metadata.model}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
-          <div className="lg:w-[260px] rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
-            <div className="flex items-baseline justify-between">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
-              <p className="text-2xl font-black text-white font-mono">{Math.round(confidence * 100)}%</p>
+          <div className="xl:w-[320px] rounded-[2rem] border border-white/10 bg-black/40 p-8 space-y-5 backdrop-blur-2xl shadow-inner relative overflow-hidden group/conf">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover/conf:opacity-100 transition-opacity" />
+            <div className="relative z-10">
+              <div className="flex items-baseline justify-between mb-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Certainty</p>
+                <p className="text-4xl font-black text-white font-mono tracking-tighter">{Math.round(confidence * 100)}<span className="text-xl text-white/40">%</span></p>
+              </div>
+              <ScoreBar label="" score={confidence} showPercentage={false} color="bg-gradient-to-r from-blue-500 to-cyan-400 h-2" />
+              <div className="flex items-center gap-2 mt-4">
+                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                <p className="text-xs font-black uppercase tracking-widest text-cyan-400">{confidenceLabel(confidence)}</p>
+              </div>
+              <p className="text-[10px] text-white/40 mt-3 leading-relaxed">Cross-verification of neural artifacts and heuristic metadata yields this confidence score.</p>
             </div>
-            <ScoreBar label="" score={confidence} showPercentage={false} color="bg-cyan-500" />
-            <p className="text-[11px] font-bold text-cyan-300">{confidenceLabel(confidence)}</p>
-            <p className="text-[10px] text-white/45">Confidence reflects analysis clarity and signal consistency, not absolute truth.</p>
           </div>
         </div>
       </div>

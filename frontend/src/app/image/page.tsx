@@ -85,19 +85,24 @@ export default function ImageDetectionPage() {
   return (
     <div className="min-h-screen pt-32 pb-24">
       <SectionWrapper className="container max-w-4xl mx-auto px-6">
-        <div className="text-center mb-12">
-          <div className="w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/30 flex items-center justify-center mx-auto mb-6">
-            <ImageIcon className="w-8 h-8 text-blue-400" />
-          </div>
-          <h1 className="text-4xl md:text-5xl font-black mb-4">
-            Image <span className="text-blue-400">Forensics</span>
+        <div className="text-center mb-16">
+          <motion.div 
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="w-20 h-20 rounded-3xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-8 relative"
+          >
+            <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full" />
+            <ImageIcon className="w-10 h-10 text-blue-400 relative z-10" />
+          </motion.div>
+          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
+            Image <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-400">Forensics</span>
           </h1>
-          <p className="text-white/50 text-lg">
-            Scan photos for AI generation and manipulation.
+          <p className="text-white/60 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed">
+            Scan photos for AI generation, deepfakes, and pixel-level manipulation using neural artifact detection and forensic ELA.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-8">
+        <div className="flex flex-col gap-12">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -116,25 +121,31 @@ export default function ImageDetectionPage() {
                 />
               ) : (
                 <div className="space-y-6">
-                  <div className="relative w-full aspect-square rounded-2xl overflow-hidden border border-white/10 bg-black/50">
+                  <div className="relative w-full aspect-video md:aspect-[21/9] rounded-3xl overflow-hidden border border-white/10 bg-black/50 group cursor-zoom-in">
                     <Image
                       src={previewUrl}
                       alt="Preview"
                       fill
-                      className="object-contain"
+                      className="object-cover transition-transform duration-700 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-6">
+                      <p className="text-white/70 text-sm font-medium">Click to re-upload</p>
+                    </div>
                     {loading && (
-                      <div className="absolute inset-0 bg-blue-900/40 backdrop-blur-sm flex flex-col items-center justify-center text-white">
-                        <div className="w-full absolute top-0 h-1 bg-blue-500/20 overflow-hidden">
+                      <div className="absolute inset-0 bg-blue-950/60 backdrop-blur-md flex flex-col items-center justify-center text-white z-20">
+                        <div className="w-full absolute top-0 h-1.5 bg-blue-500/20 overflow-hidden">
                           <motion.div
-                            className="h-full bg-blue-400 shadow-[0_0_10px_#60a5fa]"
+                            className="h-full bg-blue-400 shadow-[0_0_20px_#60a5fa]"
                             initial={{ width: "0%" }}
                             animate={{ width: "100%" }}
-                            transition={{ duration: 2, repeat: Infinity }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
                           />
                         </div>
-                        <Loader2 className="w-10 h-10 animate-spin text-blue-400 mb-4" />
-                        <p className="font-bold tracking-widest uppercase">Scanning Pixels</p>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-blue-400/20 blur-xl rounded-full animate-pulse" />
+                          <Loader2 className="w-12 h-12 animate-spin text-blue-400 mb-6 relative z-10" />
+                        </div>
+                        <p className="font-black tracking-[0.3em] uppercase text-sm text-blue-100 drop-shadow-lg">Scanning Artifacts</p>
                       </div>
                     )}
                   </div>
@@ -160,34 +171,39 @@ export default function ImageDetectionPage() {
             </div>
           </motion.div>
 
-          <div className="w-full h-full relative">
-            <AnimatePresence mode="wait">
-              {result ? (
-                <motion.div
-                  key="result"
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="relative z-10 h-full"
-                >
-                  <h3 className="font-bold text-white/80 mb-4">Forensic Report</h3>
-                  <ResultDisplay result={result} />
-                </motion.div>
-              ) : (
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div className="flex items-center gap-4 mb-2">
+                  <div className="h-px flex-1 bg-white/5" />
+                  <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/30">Forensic Intelligence Report</h3>
+                  <div className="h-px flex-1 bg-white/5" />
+                </div>
+                <ResultDisplay result={result} />
+              </motion.div>
+            ) : (
+              !loading && !previewUrl && (
                 <motion.div
                   key="empty"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="absolute inset-0 glass rounded-3xl border border-white/5 flex flex-col items-center justify-center text-center p-8"
+                  className="glass rounded-[2rem] border border-white/5 flex flex-col items-center justify-center text-center p-16"
                 >
-                  <div className="w-16 h-16 rounded-full border border-dashed border-white/20 flex items-center justify-center mb-4">
-                    <ImageIcon className="w-6 h-6 text-white/20" />
+                  <div className="w-20 h-20 rounded-full border border-dashed border-white/10 flex items-center justify-center mb-6">
+                    <ImageIcon className="w-8 h-8 text-white/10" />
                   </div>
-                  <p className="text-white/40 font-medium">Awaiting Input</p>
+                  <h4 className="text-white/60 font-bold text-lg mb-2">No Image Loaded</h4>
+                  <p className="text-white/30 text-sm max-w-xs">Upload a photograph to begin deep forensic analysis.</p>
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              )
+            )}
+          </AnimatePresence>
         </div>
       </SectionWrapper>
     </div>
