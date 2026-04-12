@@ -2,55 +2,87 @@
 
 import { motion } from "framer-motion";
 import { SectionWrapper } from "./section-wrapper";
-import { Layers, Globe2, ShieldCheck, Zap, Activity, Database } from "lucide-react";
+import { 
+  Layers, 
+  Globe2, 
+  ShieldCheck, 
+  Zap, 
+  Activity, 
+  Database, 
+  Cpu, 
+  Eye, 
+  Binary 
+} from "lucide-react";
 
 export function FeaturesSection() {
   const features = [
     {
-      icon: Layers,
-      title: "Multi-Modal Synergy",
-      desc: "Cross-references text context with image authenticity for comprehensive checks.",
+      icon: Cpu,
+      title: "Neural Cross-Referencing",
+      desc: "Our engine simultaneously processes metadata, visual artifacts, and semantic consistency for a 360° verification profile.",
+      tag: "Advanced"
     },
     {
-      icon: Zap,
-      title: "Explainable AI",
-      desc: "Don't just get a score. See exactly which sentences or pixels triggered the alert.",
+      icon: Eye,
+      title: "Explainable Forensics",
+      desc: "Full transparency. We provide heatmaps showing exactly which pixels or sentence structures triggered AI suspicion.",
+      tag: "Feature"
     },
     {
-      icon: ShieldCheck,
-      title: "Source Credibility",
-      desc: "Real-time lookups against databases of known disinformation networks.",
+      icon: Binary,
+      title: "Diffusion Fingerprinting",
+      desc: "Detect the specific generator (Midjourney, DALL-E 3, Stable Diffusion) by identifying unique model-specific noise signatures.",
+      tag: "Patented"
     },
     {
       icon: Globe2,
-      title: "Multilingual",
-      desc: "Detect propaganda and bias in 50+ languages natively without translation loss.",
+      title: "Geopolitical Context",
+      desc: "Native understanding of regional propaganda patterns across 50+ languages without the loss of nuance from translation.",
+      tag: "Global"
     },
     {
       icon: Activity,
-      title: "Real-time Processing",
-      desc: "Sub-second inference times for text and rapid processing for high-res media.",
+      title: "Asynchronous Scalability",
+      desc: "Distributed task queue architecture allows for high-throughput batch processing of massive media libraries in real-time.",
+      tag: "Fast"
     },
     {
       icon: Database,
-      title: "Enterprise Dashboard",
-      desc: "Track trends, manage API usage, and export detailed forensic reports. (Coming Soon)",
+      title: "Blockchain Anchoring",
+      desc: "Verified content hashes can be anchored to public ledgers to ensure permanent, immutable proof of authenticity.",
+      tag: "Coming Soon"
     },
   ];
 
   return (
-    <section className="py-24 relative z-10 bg-[#0a0a1a]">
-      <SectionWrapper className="container max-w-5xl mx-auto px-6">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-black mb-6">
-            System Features
-          </h2>
-          <p className="text-white/50 text-lg max-w-2xl mx-auto">
-            Engineered for precision. Built for scale.
-          </p>
+    <section className="py-32 relative z-10 bg-[#080816]">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(16,185,129,0.05),transparent_50%)] pt-20" />
+      
+      <SectionWrapper className="container max-w-7xl mx-auto px-6">
+        <div className="flex flex-col md:flex-row items-end justify-between mb-20 gap-8">
+          <div className="max-w-2xl">
+            <h2 className="text-4xl md:text-6xl font-black mb-8 tracking-tighter text-white">
+              Forensic <span className="text-emerald-500">Excellence.</span>
+            </h2>
+            <p className="text-white/40 text-lg md:text-xl font-medium leading-relaxed">
+              We leverage the intersection of deep learning and digital forensics 
+              to provide an unhackable layer of trust for the digital age.
+            </p>
+          </div>
+          <div className="hidden md:block">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="w-32 h-32 rounded-full border border-dashed border-emerald-500/20 flex items-center justify-center"
+            >
+              <div className="w-24 h-24 rounded-full border border-emerald-500/10 flex items-center justify-center">
+                <ShieldCheck className="w-10 h-10 text-emerald-500/30" />
+              </div>
+            </motion.div>
+          </div>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((f, i) => {
             const Icon = f.icon;
             return (
@@ -59,16 +91,21 @@ export function FeaturesSection() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1 }}
-                className="glass p-6 rounded-2xl border border-white/5 hover:-translate-y-2 hover:border-purple-500/30 hover:bg-purple-500/5 transition-all duration-300 group"
+                transition={{ duration: 0.5, delay: i * 0.1 }}
+                className="group p-8 rounded-[2rem] bg-white/[0.02] border border-white/5 hover:border-emerald-500/30 hover:bg-emerald-500/5 transition-all duration-500"
               >
-                <div className="w-12 h-12 rounded-xl bg-white/5 flex items-center justify-center mb-6 group-hover:bg-purple-500/20 group-hover:text-purple-400 transition-colors">
-                  <Icon className="w-6 h-6 text-white/50 group-hover:text-purple-400 transition-colors" />
+                <div className="flex items-start justify-between mb-10">
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/20 transition-all duration-500">
+                    <Icon className="w-7 h-7 text-emerald-400" />
+                  </div>
+                  <span className="text-[10px] font-black tracking-widest uppercase text-white/20 px-3 py-1 rounded-full border border-white/5">
+                    {f.tag}
+                  </span>
                 </div>
-                <h3 className="text-lg font-bold mb-2 text-white/90">
+                <h3 className="text-xl font-bold mb-4 text-white group-hover:text-emerald-400 transition-colors">
                   {f.title}
                 </h3>
-                <p className="text-sm text-white/50 leading-relaxed group-hover:text-white/70 transition-colors">
+                <p className="text-base text-white/40 leading-relaxed font-medium group-hover:text-white/60 transition-colors">
                   {f.desc}
                 </p>
               </motion.div>

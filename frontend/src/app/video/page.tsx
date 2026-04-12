@@ -2,12 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Video as VideoIcon, Loader2, RefreshCcw, Film, AlertCircle, Brain, RotateCcw, Expand, Play } from "lucide-react";
+import { Video as VideoIcon, RefreshCcw, Film, AlertCircle, Brain, RotateCcw, Expand, Play } from "lucide-react";
 import { SectionWrapper } from "@/components/section-wrapper";
 import { FileUpload } from "@/components/file-upload";
 import { ResultDisplay } from "@/components/result-display";
 import { AnalysisResult } from "@/lib/types";
 import { analyzeVideo, getJobStatus } from "@/lib/api";
+import { Button } from "@/components/ui/button";
 
 export default function VideoDetectionPage() {
   const [file, setFile] = useState<File | null>(null);
@@ -108,96 +109,119 @@ export default function VideoDetectionPage() {
   };
 
   const sceneTags = result?.intelligence?.tags || [];
-  const stripValues = result?.frame_scores?.length ? result.frame_scores : result?.signals?.map((s) => s.confidence) || [];
+  const stripValues = result?.frame_scores?.length ? result.frame_scores : result?.signals?.map((s: any) => s.confidence) || [];
 
   return (
-    <div className="min-h-screen pt-32 pb-24">
+    <div className="min-h-screen pt-32 pb-24 relative overflow-hidden">
+      {/* Background Glow */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-emerald-500/5 blur-[120px] rounded-full -z-10 opacity-60" />
+
       <SectionWrapper className="container max-w-5xl mx-auto px-6">
         <div className="text-center mb-16">
           <motion.div
-            initial={{ scale: 0.5, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="w-20 h-20 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto mb-8 relative"
+            className="w-20 h-20 rounded-3xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-emerald-500/10"
           >
-            <div className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full" />
-            <VideoIcon className="w-10 h-10 text-purple-400 relative z-10" />
+            <VideoIcon className="w-10 h-10 text-emerald-400" />
           </motion.div>
-          <h1 className="text-4xl md:text-6xl font-black mb-6 tracking-tight">
-            Video <span className="bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-fuchsia-400">Forensics</span>
+          <h1 className="text-5xl md:text-7xl font-black mb-8 tracking-tighter">
+            Video <span className="text-emerald-400">Forensics</span>
           </h1>
-          <p className="text-white/60 text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
-            Analyze temporal consistency, deepfake risk, lip-sync integrity, and compression behavior across sampled frames.
+          <p className="text-white/40 text-lg md:text-xl max-w-3xl mx-auto font-medium">
+            Analyze temporal consistency, deepfake risks, lip-sync integrity, and 
+            compression behavior across high-frequency sampled frames.
           </p>
         </div>
 
         <div className="flex flex-col gap-12">
-          <div className="glass rounded-3xl p-6 border border-white/10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white/[0.02] rounded-[2.5rem] p-10 border border-white/5 shadow-2xl relative backdrop-blur-md"
+          >
             {!previewUrl ? (
               <FileUpload
                 accept="video/mp4,video/webm,video/quicktime,video/x-msvideo,video/avi"
                 onFileSelect={handleFileSelect}
-                label="Drag & drop video here"
-                description="Supports MP4, WEBM, MOV, AVI"
-                icon={<Film className="w-7 h-7 text-purple-400/50" />}
+                label="Initialize Video Intake"
+                description="Supports MP4, WEBM, MOV, AVI (Max 100MB)"
+                icon={<Film className="w-8 h-8 text-emerald-500/30" />}
                 maxSizeMB={100}
               />
             ) : (
-              <div className="space-y-5">
-                <div className="relative w-full aspect-video rounded-3xl overflow-hidden border border-white/10 bg-black/80">
+              <div className="space-y-8">
+                <div className="relative w-full aspect-video rounded-3xl overflow-hidden border border-white/5 bg-black/60 shadow-inner">
                   <video ref={videoRef} src={previewUrl} controls preload="metadata" playsInline className="w-full h-full object-contain" />
+                  
                   {loading && (
-                    <div className="absolute inset-0 bg-purple-900/65 backdrop-blur-md flex flex-col items-center justify-center text-white z-20">
-                      <Loader2 className="w-12 h-12 animate-spin text-purple-300 mb-4" />
-                      <p className="font-black uppercase tracking-[0.25em] text-xs mb-2">Analyzing Video</p>
-                      <p className="text-xs text-purple-100 animate-pulse">{progress || "Running temporal and facial forensics..."}</p>
+                    <div className="absolute inset-0 bg-black/80 backdrop-blur-xl flex flex-col items-center justify-center z-50">
+                      <div className="w-64 h-1 bg-white/5 rounded-full mb-8 overflow-hidden">
+                        <motion.div
+                          className="h-full bg-emerald-500"
+                          initial={{ x: "-100%" }}
+                          animate={{ x: "100%" }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      </div>
+                      <p className="font-black tracking-[0.4em] uppercase text-xs text-emerald-500 animate-pulse mb-3">Analyzing Intelligence</p>
+                      <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{progress || "Scanning samples..."}</p>
                     </div>
                   )}
+
                   {error && (
-                    <div className="absolute inset-0 bg-red-900/80 backdrop-blur-md flex flex-col items-center justify-center text-white p-6 z-20 text-center">
-                      <AlertCircle className="w-10 h-10 text-red-300 mb-4" />
-                      <p className="font-bold uppercase mb-2">Analysis Failed</p>
-                      <p className="text-sm text-red-100">{error}</p>
+                    <div className="absolute inset-0 bg-rose-950/90 backdrop-blur-xl flex flex-col items-center justify-center p-8 z-50 text-center">
+                      <AlertCircle className="w-12 h-12 text-rose-500 mb-4" />
+                      <p className="font-black uppercase tracking-widest text-rose-200 mb-2">Analysis Failed</p>
+                      <p className="text-sm text-rose-300/60 font-medium">{error}</p>
                     </div>
                   )}
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={replayVideo} disabled={loading} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass border border-white/10 text-white/75 hover:text-white transition-all text-xs font-semibold disabled:opacity-40">
-                    <Play className="w-3.5 h-3.5" />
-                    Replay
-                  </button>
-                  <button onClick={openFullscreen} disabled={loading} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass border border-white/10 text-white/75 hover:text-white transition-all text-xs font-semibold disabled:opacity-40">
-                    <Expand className="w-3.5 h-3.5" />
-                    Fullscreen
-                  </button>
-                  <button onClick={reset} disabled={loading} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass border border-white/10 text-white/75 hover:text-white transition-all text-xs font-semibold disabled:opacity-40">
-                    <RefreshCcw className="w-3.5 h-3.5" />
-                    Re-upload
-                  </button>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="ghost" onClick={replayVideo} disabled={loading} className="h-12 px-6">
+                    <Play className="w-4 h-4 mr-2" /> REPLAY
+                  </Button>
+                  <Button variant="ghost" onClick={openFullscreen} disabled={loading} className="h-12 px-6">
+                    <Expand className="w-4 h-4 mr-2" /> FULLSCREEN
+                  </Button>
+                  <Button variant="ghost" onClick={reset} disabled={loading} className="h-12 px-6">
+                    <RefreshCcw className="w-4 h-4 mr-2" /> FLUSH
+                  </Button>
+                  
+                  <Button
+                    variant={loading ? "loading" : "primary"}
+                    onClick={handleAnalyze}
+                    disabled={loading || !!result}
+                    className="flex-1 h-12 text-lg"
+                  >
+                    {loading ? "PROCESSING..." : result ? "SCAN COMPLETE" : "DEPLOY ANALYSIS"}
+                  </Button>
+                  
                   {result && (
-                    <button onClick={handleAnalyze} disabled={loading} className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl glass border border-white/10 text-white/75 hover:text-white transition-all text-xs font-semibold disabled:opacity-40">
-                      <RotateCcw className="w-3.5 h-3.5" />
-                      Retry analysis
-                    </button>
+                    <Button variant="ghost" onClick={handleAnalyze} disabled={loading} className="h-12 px-6">
+                      <RotateCcw className="w-4 h-4 mr-2" /> RETRY
+                    </Button>
                   )}
-                  <button onClick={handleAnalyze} disabled={loading || !!result} className="flex-1 min-w-[180px] py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-bold hover:shadow-[0_0_30px_rgba(168,85,247,0.4)] disabled:opacity-50 transition-all text-sm">
-                    {loading ? "Analyzing…" : result ? "Analysis Complete ✓" : "Analyze Video"}
-                  </button>
                 </div>
 
-                {(result?.intelligence || stripValues.length > 0) && (
-                  <div className="space-y-4">
+                {result && (
+                  <div className="space-y-6 pt-4 border-t border-white/5">
                     {result?.intelligence && (
-                      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/20">
-                        <div className="flex items-center gap-2 mb-2 text-[10px] font-black uppercase tracking-widest text-purple-300">
-                          <Brain className="w-3.5 h-3.5" />
-                          <span>Scene Intelligence</span>
+                      <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }} 
+                        animate={{ opacity: 1, scale: 1 }} 
+                        className="p-6 rounded-2xl bg-white/[0.02] border border-white/5"
+                      >
+                        <div className="flex items-center gap-2 mb-4">
+                          <Brain className="w-4 h-4 text-emerald-500/50" />
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-500/50">Tactical Context</span>
                         </div>
-                        <p className="text-white/80 text-xs leading-relaxed">{result.intelligence.summary}</p>
+                        <p className="text-white/60 text-sm font-medium leading-relaxed">{result.intelligence.summary}</p>
                         {sceneTags.length > 0 && (
-                          <div className="flex flex-wrap gap-1.5 mt-3">
-                            {sceneTags.map((tag) => (
-                              <span key={tag} className="px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-[9px] text-white/45 uppercase tracking-tighter">
+                          <div className="flex flex-wrap gap-2 mt-4">
+                            {sceneTags.map((tag: string) => (
+                              <span key={tag} className="px-3 py-1 rounded-lg bg-black/40 border border-white/5 text-[10px] text-white/40 font-bold uppercase tracking-widest">
                                 #{tag}
                               </span>
                             ))}
@@ -205,51 +229,44 @@ export default function VideoDetectionPage() {
                         )}
                       </motion.div>
                     )}
+
                     {stripValues.length > 0 && (
-                      <div className="rounded-2xl border border-white/10 bg-black/30 p-4 space-y-3">
-                        <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-tighter text-white/45">
-                          <span>Preview frame strip</span>
-                          <span>{stripValues.length} samples</span>
+                      <div className="p-6 rounded-2xl border border-white/5 bg-black/40">
+                        <div className="flex items-center justify-between mb-6">
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Temporal Artifact Strip</span>
+                          <span className="text-[10px] font-black text-white/20">{stripValues.length} QUADRANTS</span>
                         </div>
-                        <div className="h-12 w-full flex gap-1 items-end">
-                          {stripValues.map((val, i) => (
-                            <div
+                        <div className="h-16 w-full flex gap-1 items-end">
+                          {stripValues.map((val: number, i: number) => (
+                            <motion.div
                               key={i}
-                              style={{ height: `${Math.max(val * 100, 8)}%` }}
-                              className={`flex-1 rounded-sm transition-all duration-500 ${val > 0.7 ? "bg-rose-500/70" : val > 0.4 ? "bg-amber-500/60" : "bg-emerald-500/45"}`}
-                              title={`Sample ${i + 1}: ${Math.round(val * 100)}%`}
+                              initial={{ height: 0 }}
+                              animate={{ height: `${Math.max(val * 100, 10)}%` }}
+                              className={`flex-1 rounded-sm ${
+                                val > 0.7 ? "bg-rose-500/60" : val > 0.4 ? "bg-emerald-500/60" : "bg-emerald-500/20"
+                              }`}
+                              title={`Unit ${i + 1}: ${Math.round(val * 100)}%`}
                             />
                           ))}
                         </div>
-                        <p className="text-[10px] text-white/30">Higher bars indicate stronger synthetic signal in sampled frames.</p>
+                        <p className="text-[10px] font-black text-white/10 mt-4 uppercase tracking-[0.2em]">High frequency AI indication detected in upper spectrum</p>
                       </div>
                     )}
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
 
           <AnimatePresence mode="wait">
-            {result ? (
-              <motion.div key="result" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="h-px flex-1 bg-white/5" />
-                  <h3 className="font-black text-[10px] uppercase tracking-[0.3em] text-white/30">Video Forensic Intelligence Report</h3>
+            {result && (
+              <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <div className="flex items-center gap-6">
+                  <h3 className="font-black text-[10px] uppercase tracking-[0.4em] text-emerald-500/50">Comprehensive Forensic Export</h3>
                   <div className="h-px flex-1 bg-white/5" />
                 </div>
                 <ResultDisplay result={result} />
               </motion.div>
-            ) : (
-              !loading && !previewUrl && (
-                <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass rounded-[2rem] border border-white/5 flex flex-col items-center justify-center text-center p-16">
-                  <div className="w-20 h-20 rounded-full border border-dashed border-white/10 flex items-center justify-center mb-6">
-                    <VideoIcon className="w-8 h-8 text-white/10" />
-                  </div>
-                  <h4 className="text-white/60 font-bold text-lg mb-2">No Video Loaded</h4>
-                  <p className="text-white/30 text-sm max-w-xs">Upload a clip to begin temporal and deepfake forensics.</p>
-                </motion.div>
-              )
             )}
           </AnimatePresence>
         </div>

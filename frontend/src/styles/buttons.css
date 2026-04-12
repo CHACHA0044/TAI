@@ -1,27 +1,29 @@
 /* frontend/src/styles/buttons.css */
 
 .tg-btn-base {
-  min-height: 44px;
+  min-height: 48px;
   font-family: 'JetBrains Mono', monospace, ui-monospace, SFMono-Regular;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  transition-property: background-color, border-color, filter, color;
-  transition-duration: 0.3s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  gap: 10px;
+  transition: all 0.4s cubic-bezier(0.23, 1, 0.32, 1);
   outline: none;
   text-decoration: none;
+  position: relative;
+  border-radius: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  isolation: isolate;
 }
 
 .tg-btn-base:focus-visible {
-  box-shadow: 0 0 0 2px #080818, 0 0 0 4px #34d399;
+  box-shadow: 0 0 0 2px #080818, 0 0 0 4px #10b981;
 }
 
 .tg-btn-base:active {
-  transform: scale(0.96);
-  transition-duration: 80ms;
+  transform: scale(0.95);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -30,193 +32,150 @@
     animation: none !important;
     transform: none !important;
   }
-  .tg-btn-base:active {
-    transform: none !important;
-  }
 }
 
-/* Primary Button */
+/* Primary Button - Premium Emerald Gradient */
 .tg-btn-primary {
-  background: #34d399;
-  color: #000;
-  border-radius: 8px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 14px 32px;
-  position: relative;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #0d1117;
+  padding: 14px 36px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 4px 15px rgba(16, 185, 129, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
   overflow: hidden;
-  border: 1px solid transparent;
-}
-
-.tg-btn-primary::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.05) 2px,
-    rgba(0, 0, 0, 0.05) 4px
-  );
-  pointer-events: none;
-  opacity: 0.5;
 }
 
 .tg-btn-primary:hover {
-  filter: drop-shadow(0 0 15px rgba(52, 211, 153, 0.6));
+  transform: translateY(-2px);
+  box-shadow: 
+    0 8px 25px rgba(16, 185, 129, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
   border-color: rgba(255, 255, 255, 0.4);
 }
 
-@keyframes pulseBorder {
-  0% { border-color: rgba(255, 255, 255, 0.1); filter: drop-shadow(0 0 8px rgba(52,211,153,0.3)); }
-  50% { border-color: rgba(255, 255, 255, 0.6); filter: drop-shadow(0 0 20px rgba(52,211,153,0.8)); }
-  100% { border-color: rgba(255, 255, 255, 0.1); filter: drop-shadow(0 0 8px rgba(52,211,153,0.3)); }
+/* Shimmer Effect for Primary */
+.tg-btn-primary::after {
+  content: "";
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 45%,
+    rgba(255, 255, 255, 0.3) 50%,
+    rgba(255, 255, 255, 0.1) 55%,
+    transparent 100%
+  );
+  transform: translateX(-100%) translateY(-100%) rotate(45deg);
+  transition: transform 0.6s ease;
+  z-index: -1;
 }
 
-.tg-btn-primary:hover {
-  animation: pulseBorder 1.5s infinite;
+.tg-btn-primary:hover::after {
+  transform: translateX(50%) translateY(50%) rotate(45deg);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .tg-btn-primary:hover {
-    animation: none;
-  }
-}
-
-/* Secondary Button */
+/* Secondary Button - Glassmorphism */
 .tg-btn-secondary {
-  background: transparent;
-  border: 1px solid #34d399;
-  color: #9ca3af;
-  border-radius: 6px;
-  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e5e7eb;
+  padding: 12px 28px;
+  backdrop-filter: blur(12px);
 }
 
 .tg-btn-secondary:hover {
-  border-color: #ffffff;
-  background-color: rgba(52, 211, 153, 0.1);
-  color: #34d399;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: #10b981;
+  color: #10b981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
 }
 
-/* Ghost / Nav Button */
+/* Ghost Button - Simple and Clean */
 .tg-btn-ghost {
   background: transparent;
-  border: none;
+  border: 1px solid transparent;
   color: #9ca3af;
-  padding: 8px 16px;
-  position: relative;
-  font-weight: 500;
-}
-
-.tg-btn-ghost::after {
-  content: '';
-  position: absolute;
-  bottom: 0px;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: #34d399;
-  clip-path: polygon(0 0, 0 0, 0 100%, 0% 100%);
-  transition-property: clip-path;
-  transition-duration: 0.3s;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  padding: 8px 20px;
 }
 
 .tg-btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
   color: #ffffff;
 }
 
-.tg-btn-ghost:hover::after {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
-}
-
-.tg-btn-ghost-active::before {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background-color: #34d399;
+.tg-btn-ghost-active {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.2);
+  color: #10b981 !important;
 }
 
 /* Icon Button */
 .tg-btn-icon {
-  background: rgba(52, 211, 153, 0.08);
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  border-radius: 10px;
-  width: 40px;
-  height: 40px;
-  min-height: 40px;
+  width: 44px;
+  height: 44px;
   padding: 0;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  color: #34d399;
+  background: rgba(16, 185, 129, 0.05);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  color: #10b981;
 }
 
 .tg-btn-icon:hover {
-  filter: drop-shadow(0 0 10px rgba(52, 211, 153, 0.4));
-  border-color: rgba(52, 211, 153, 0.5);
+  background: rgba(16, 185, 129, 0.12);
+  border-color: #10b981;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.2);
 }
 
 /* Danger Button */
 .tg-btn-danger {
-  background: rgba(220, 38, 38, 0.15);
-  border: 1px solid #dc2626;
+  background: rgba(239, 68, 68, 0.05);
+  border: 1px solid rgba(239, 68, 68, 0.2);
   color: #ef4444;
-  border-radius: 6px;
-  padding: 10px 24px;
+  padding: 12px 28px;
 }
 
 .tg-btn-danger:hover {
-  filter: drop-shadow(0 0 12px rgba(220, 38, 38, 0.6));
-  background: rgba(220, 38, 38, 0.25);
+  background: #ef4444;
+  color: #ffffff;
+  border-color: #ef4444;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.3);
 }
 
-/* Loading State Button */
+/* Loading State */
 .tg-btn-loading {
-  background: #34d399;
-  color: #000;
-  border-radius: 8px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 14px 32px;
-  position: relative;
+  background: #1f2937;
+  color: #9ca3af;
+  padding: 14px 36px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  pointer-events: none;
   overflow: hidden;
-  border: 1px solid transparent;
-  pointer-events: none;
-  opacity: 0.7;
 }
 
-.tg-btn-loading::before {
-  content: '';
+.tg-loading-bar {
   position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0, 0, 0, 0.05) 2px,
-    rgba(0, 0, 0, 0.05) 4px
-  );
-  pointer-events: none;
-  opacity: 0.5;
-  z-index: 1;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: #10b981;
+  box-shadow: 0 0 10px #10b981;
+  animation: loadingProgress 2s infinite ease-in-out;
 }
 
-.tg-scanline {
+@keyframes loadingProgress {
+  0% { width: 0%; left: 0%; }
+  50% { width: 100%; left: 0%; }
+  100% { width: 0%; left: 100%; }
+}
+
+/* Ripple Effect Styles */
+.tg-ripple {
   position: absolute;
-  top: 0;
-  left: -20px;
-  width: 10px;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.6);
-  filter: blur(5px);
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
   pointer-events: none;
-  z-index: 2;
+  transform: scale(0);
 }

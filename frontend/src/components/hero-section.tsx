@@ -1,67 +1,91 @@
 "use client";
 
-/* Breakpoints Addressed:
- * xs (below 640px): Stacked vertical layout, fluid fonts clamp(), min 44px touch targets.
- * sm/md: Flex row layout for CTA, scaled typography.
- * lg/xl: Restored full desktop typography and max width.
- */
-
-import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
-import { ShieldAlert, Play } from "lucide-react";
+import { motion } from "framer-motion";
+import { GridBackground } from "./grid-background";
 import { SectionWrapper } from "./section-wrapper";
 import { Button } from "./ui/button";
+import { ShieldCheck, Zap, Globe, Lock } from "lucide-react";
 
 export function HeroSection() {
-  const prefersReducedMotion = useReducedMotion();
-
   return (
-    <div className="relative min-h-[90vh] flex items-center justify-center pt-24 pb-16 overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 z-0" aria-hidden="true">
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0a0a1f] via-[#080818] to-[#080818] z-10" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#080818]/80 to-[#080818] z-20" />
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-emerald-500/10 blur-[120px] rounded-full z-0 opacity-50 md:opacity-100 transition-opacity duration-500" />
-        <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-teal-500/10 blur-[120px] rounded-full z-0 opacity-50 md:opacity-100 transition-opacity duration-500" />
-      </div>
+    <div className="relative min-h-screen flex items-center justify-center pt-32 pb-20 overflow-hidden">
+      <GridBackground />
 
-      <SectionWrapper className="relative z-30 container w-full max-w-[1440px] mx-auto px-4 sm:px-6 text-center">
+      <SectionWrapper className="relative z-10 container mx-auto px-6 text-center">
         <motion.div
-          initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass border-white/10 mb-6 sm:mb-8 will-change-transform"
+          className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 mb-10 shadow-[0_0_20px_rgba(16,185,129,0.1)]"
         >
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-          </span>
-          <span className="text-xs sm:text-sm font-semibold text-white/80 tracking-wide uppercase">
-            TruthGuard AI Engine v2.0 Live
+          <span className="flex h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#10b981]" />
+          <span className="text-xs font-bold text-emerald-400 tracking-[0.2em] uppercase">
+            TruthGuard AI — Enterprise Forensics v2.0
           </span>
         </motion.div>
 
-        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black tracking-tight mb-6 sm:mb-8 leading-[1.1] sm:leading-[1.1]">
-          Detect Misinformation
-          <br className="hidden sm:block" />
-          <span className="block sm:inline sm:ml-3 bg-gradient-to-r from-emerald-400 to-teal-400 bg-clip-text text-transparent transform-gpu">
-            With Pinpoint Accuracy.
+        <motion.h1 
+          className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tighter mb-8 leading-[0.95] text-white"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+        >
+          Demolish Digital
+          <br />
+          <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 bg-clip-text text-transparent">
+            Deception.
           </span>
-        </h1>
+        </motion.h1>
 
-        <p className="text-base sm:text-lg md:text-xl text-white/60 mb-10 max-w-2xl mx-auto font-medium leading-relaxed px-2">
-          The ultimate multi-modal fake news and deepfake detection system.
-          Analyze text, images, and videos using state-of-the-art AI.
-        </p>
+        <motion.p 
+          className="text-lg md:text-xl text-white/50 mb-12 max-w-3xl mx-auto font-medium leading-relaxed"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.3 }}
+        >
+          The world's most advanced multi-modal forensic intelligence system. 
+          Detect deepfakes, neutralize fake news, and verify authenticity across 
+          text, image, and video with sub-pixel precision.
+        </motion.p>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-6 w-full px-4 sm:px-0 mt-4">
-          <Button variant="primary" onClick={() => window.location.href = '/text'}>
-            Explore System
+        <motion.div 
+          className="flex flex-col sm:flex-row items-center justify-center gap-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: 0.4 }}
+        >
+          <Button variant="primary" className="px-10 h-14" onClick={() => window.location.href = '/text'}>
+            Deploy Analysis
           </Button>
-          <Button variant="secondary" onClick={() => window.location.href = '#how-it-works'}>
-            How it works
+          <Button variant="secondary" className="px-10 h-14" onClick={() => window.location.href = '#how-it-works'}>
+            System Architecture
           </Button>
-        </div>
+        </motion.div>
+
+        {/* Feature Tags */}
+        <motion.div 
+          className="mt-20 flex flex-wrap justify-center gap-8 md:gap-16 opacity-40 hover:opacity-100 transition-opacity duration-500"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 0.4 }}
+          transition={{ duration: 1, delay: 0.6 }}
+        >
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-widest">Real-time Verification</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Zap className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-widest">Neural Analysis</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Globe className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-widest">Global Intelligence</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <Lock className="w-5 h-5 text-emerald-400" />
+            <span className="text-xs font-bold uppercase tracking-widest">Secure & Private</span>
+          </div>
+        </motion.div>
       </SectionWrapper>
     </div>
   );
