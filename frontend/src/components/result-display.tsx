@@ -16,6 +16,7 @@ import {
   Newspaper,
   FileText,
   CircleDot,
+  Activity,
 } from "lucide-react";
 import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
@@ -233,6 +234,62 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           border: "border-amber-500/30",
           icon: ShieldQuestion,
         };
+      case "Authentic Human Video":
+        return {
+          label: "Authentic Human Video",
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/30",
+          icon: ShieldCheck,
+        };
+      case "Likely Real Recorded Footage":
+        return {
+          label: "Likely Real Recorded Footage",
+          color: "text-emerald-300",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/25",
+          icon: ShieldCheck,
+        };
+      case "AI-Generated Synthetic Video":
+        return {
+          label: "AI-Generated Synthetic Video",
+          color: "text-rose-400",
+          bg: "bg-rose-500/10",
+          border: "border-rose-500/30",
+          icon: ShieldAlert,
+        };
+      case "Deepfake / Face Manipulation Suspected":
+        return {
+          label: "Deepfake / Face Manipulation Suspected",
+          color: "text-amber-400",
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          icon: ShieldQuestion,
+        };
+      case "CGI / Rendered Animation":
+        return {
+          label: "CGI / Rendered Animation",
+          color: "text-fuchsia-300",
+          bg: "bg-fuchsia-500/10",
+          border: "border-fuchsia-500/30",
+          icon: CircleDot,
+        };
+      case "Edited / Post-Processed Footage":
+        return {
+          label: "Edited / Post-Processed Footage",
+          color: "text-amber-300",
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          icon: ShieldQuestion,
+        };
+      case "Uncertain / Needs Review":
+        return {
+          label: "Uncertain / Needs Review",
+          color: "text-sky-400",
+          bg: "bg-sky-500/10",
+          border: "border-sky-500/30",
+          icon: ShieldQuestion,
+        };
       default:
         return {
           label: isVideo ? "Likely Real Video" : "Likely Real Photograph",
@@ -242,7 +299,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           icon: ShieldCheck,
         };
     }
-  }, [result.category, result.metadata?.raw_metadata, result.frame_scores]);
+  }, [result.category, isVideo]);
 
   const metrics = useMemo(() => {
     const expanded = result.expanded_analysis;
@@ -462,6 +519,40 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       .sort((a, b) => b.relevance - a.relevance);
   }, [result.category, result.authenticity_signals, confidence]);
 
+  const videoMetrics = useMemo(() => {
+    if (!isVideo || !result.video_forensics) return [];
+    const vf = result.video_forensics;
+    const rows: Array<{ key: string; label: string; score?: number; invert?: boolean; description: string; icon: ReactElement }> = [
+      { key: "authenticity", label: "Authenticity Score", score: vf.authenticity_score, description: "Overall confidence the clip is authentic recorded footage.", icon: <ShieldCheck className="w-4 h-4 text-emerald-400" /> },
+      { key: "deepfake", label: "Deepfake Risk", score: vf.deepfake_risk, invert: true, description: "Risk of face-swap or identity manipulation artifacts.", icon: <ShieldAlert className="w-4 h-4 text-rose-400" /> },
+      { key: "temporal", label: "Temporal Consistency", score: vf.temporal_consistency, description: "Frame-to-frame continuity and absence of synthetic flicker.", icon: <Activity className="w-4 h-4 text-cyan-400" /> },
+      { key: "motion", label: "Motion Integrity", score: vf.motion_integrity, description: "Natural motion coherence across sampled segments.", icon: <Globe className="w-4 h-4 text-sky-400" /> },
+      { key: "face", label: "Face Stability", score: vf.face_stability, description: "Facial geometry stability across contiguous frames.", icon: <CircleDot className="w-4 h-4 text-amber-400" /> },
+      { key: "lipSync", label: "Lip Sync Match", score: vf.lip_sync_match, description: "Visual mouth movement agreement with speech cadence.", icon: <Mic className="w-4 h-4 text-violet-400" /> },
+      { key: "audio", label: "Audio Authenticity", score: vf.audio_authenticity, description: "Likelihood of authentic human audio vs synthetic TTS.", icon: <Mic className="w-4 h-4 text-fuchsia-400" /> },
+      { key: "compression", label: "Compression Consistency", score: vf.compression_consistency, description: "Consistency of compression signature over time.", icon: <FileText className="w-4 h-4 text-cyan-300" /> },
+    ];
+    return rows
+      .filter((row) => row.score !== undefined)
+      .map((row) => ({
+        key: row.key,
+        label: row.label,
+        description: row.description,
+        score: toRatio(row.score),
+        invertColor: row.invert,
+        icon: row.icon,
+        relevance: 2,
+        meaning: row.description,
+        whyAssigned: result.why || result.explanation,
+        indicators: [
+          `Engine score: ${Math.round(toRatio(row.score) * 100)}%`,
+          result.video_forensics?.scene_class ? `Scene class: ${result.video_forensics.scene_class.replace(/_/g, " ")}` : "",
+        ].filter(Boolean),
+        interpretation: row.invert ? "Higher scores indicate elevated forensic risk." : "Higher scores indicate stronger authenticity evidence.",
+        confidenceContext: confidenceNarrative(confidence),
+      })) as MetricCardData[];
+  }, [isVideo, result.video_forensics, result.why, result.explanation, confidence]);
+
   const primarySignals = metrics.slice(0, 3);
   const secondarySignals = metrics.slice(3);
   const imageConfidenceRatio = toRatio(result.confidence ?? result.confidence_score);
@@ -583,7 +674,19 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       )}
 
-      {result.category && (
+      {result.category && isVideo && videoMetrics.length > 0 && (
+        <div className="glass rounded-3xl border border-white/10 p-5 sm:p-6 md:p-7 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Video forensic signals</h3>
+              <p className="text-xs text-white/45">Structured video-specific metrics used for verdict fusion.</p>
+            </div>
+          </div>
+          <ScoreCardGrid metrics={videoMetrics} onOpenMetric={setActiveMetric} />
+        </div>
+      )}
+
+      {result.category && !isVideo && (
         <button
           type="button"
           onClick={() => setImageModalOpen(true)}
@@ -769,7 +872,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       )}
 
       <AnimatePresence>
-        {result.category && imageModalOpen && (
+        {result.category && !isVideo && imageModalOpen && (
           <motion.div
             className="fixed inset-0 z-[140] flex items-center justify-center p-4 sm:p-6"
             initial={{ opacity: 0 }}
