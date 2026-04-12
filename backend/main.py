@@ -197,6 +197,24 @@ class TruthExpandedInfo(BaseModel):
     sources: List[str] = Field(default_factory=list)
 
 
+class NewsArticleInfo(BaseModel):
+    title: str = ""
+    source: str = ""
+    url: str = ""
+    published_at: str = ""
+    description: str = ""
+
+
+class NewsVerificationInfo(BaseModel):
+    available: bool = True
+    message: str = ""
+    corroboration_score: Optional[float] = None
+    source_count: int = 0
+    articles: List[NewsArticleInfo] = Field(default_factory=list)
+    verification_label: str = ""
+    contradiction_detected: bool = False
+
+
 class AiExpandedInfo(BaseModel):
     explanation: str = ""
     indicators: List[str] = Field(default_factory=list)
@@ -231,6 +249,7 @@ class AnalysisResponse(BaseModel):
     # New optional fields from extended forensics layers
     audio_score: Optional[float] = None
     news_consistency_score: Optional[float] = None
+    news_verification: Optional[NewsVerificationInfo] = None
     ocr_text: Optional[str] = None
     scene_description: Optional[str] = None
     detected_objects: Optional[List[str]] = None

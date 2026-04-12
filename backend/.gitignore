@@ -14,6 +14,9 @@ uploads/
 .git/
 venv/
 venv_new/
+# NewsAPI runtime cache/quota files
+.news_cache/
+.news_quota.json
 # Ignore bulky or non-production files
 *.csv
 *.tsv

@@ -93,8 +93,27 @@ export interface AnalysisResult {
   // Extended forensics fields
   audio_score?: number;
   news_consistency_score?: number;
+  news_verification?: NewsVerification;
   ocr_text?: string;
   frame_scores?: number[];
+}
+
+export interface NewsArticle {
+  title: string;
+  source: string;
+  url: string;
+  published_at: string;
+  description: string;
+}
+
+export interface NewsVerification {
+  available: boolean;
+  message: string;
+  corroboration_score: number | null;
+  source_count: number;
+  articles: NewsArticle[];
+  verification_label: string;
+  contradiction_detected: boolean;
 }
 
 export type PrimaryVerdict =

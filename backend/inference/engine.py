@@ -33,6 +33,7 @@ except Exception:
 
 from services.trust_agents import TrustAgent
 from services.news_search_agent import NewsSearchAgent
+from services.news_api_service import get_news_api_service
 from services.sarcasm_detector import SarcasmDetector
 from services.verifiability import assess_claim_verifiability
 from services.claim_type_detector import classify_claim_type
@@ -157,6 +158,14 @@ class InferenceEngine:
         except Exception as e:
             logger.warning(f"NewsSearchAgent failed: {e}")
             self.news_agent = None
+
+        # NewsAPI verification service (quota-safe, cached)
+        try:
+            self.news_api_service = get_news_api_service()
+            logger.info("NewsAPIService initialized")
+        except Exception as e:
+            logger.warning(f"NewsAPIService failed: {e}")
+            self.news_api_service = None
 
         self.sarcasm_detector = SarcasmDetector()
         self.bias_adapter = HuggingFaceBiasClassifierAdapter()
@@ -685,6 +694,27 @@ Return valid JSON ONLY (no markdown blocks):
         factual_claim = claim_type == "FACTUAL_CLAIM"
         trust_summary = self._summarize_trust_signals(verification_signals)
 
+        # 4.6 NewsAPI verification (quota-safe, news-gated)
+        news_verification = None
+        if self.news_api_service:
+            try:
+                news_verification = self.news_api_service.verify(content)
+                if news_verification:
+                    logger.info(
+                        "NewsAPI verification: label=%s corroboration=%.2f",
+                        news_verification.get("verification_label"),
+                        news_verification.get("corroboration_score") or 0.0,
+                    )
+            except Exception as exc:
+                logger.warning(f"NewsAPIService.verify error: {exc}")
+
+        # Feed NewsAPI corroboration into credibility signal if available
+        _news_corroboration = (news_verification or {}).get("corroboration_score")
+        if _news_corroboration is not None and claim_type in {"FACTUAL_CLAIM", "MIXED"}:
+            # Positive corroboration boosts truth_score slightly; contradiction penalises
+            _news_adj = (_news_corroboration - 0.50) * 0.12   # ±0.06 max shift
+            truth_score = self._sanitize(truth_score + _news_adj)
+
         # 5. Fusion & self-check (STRICTLY INDEPENDENT)
         # When no external signals are available, we default to the model truth score.
         if verification_signals:
@@ -927,6 +957,7 @@ Return valid JSON ONLY (no markdown blocks):
             },
             "signals": signals,
             **({"news_consistency_score": round(news_consistency_score, 2)} if is_news_relevant else {}),
+            **({"news_verification": news_verification} if news_verification else {}),
             "triggered_rule": routing.get("triggered_rule"),
             "verdict": primary_verdict.replace("_", " ").title(),
             "risk_level": risk_level,
