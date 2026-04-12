@@ -17,4 +17,5 @@ export interface MetricCardData {
   confidenceContext: string;
   evidence?: string;
   sources?: string[];
+  technicalOnly?: boolean;
 }

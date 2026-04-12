@@ -55,18 +55,39 @@ export interface AnalysisResult {
     tags: string[];
   };
   explanation: string;
-  category?: "REAL" | "AI_GENERATED" | "DEEPFAKE" | "EDITED" | "MIXED" | "UNCERTAIN";
+  category?:
+    | "REAL"
+    | "AI_GENERATED"
+    | "DEEPFAKE"
+    | "EDITED"
+    | "MIXED"
+    | "UNCERTAIN"
+    | "AUTHENTIC_REAL_PHOTOGRAPH"
+    | "LIKELY_REAL_CAMERA_PHOTO"
+    | "AI_GENERATED_SYNTHETIC_IMAGE"
+    | "DIGITAL_ARTWORK_ILLUSTRATION"
+    | "HAND_DRAWN_SKETCH_ARTWORK"
+    | "EDITED_MANIPULATED_IMAGE"
+    | "COMPOSITE_POTENTIAL_DEEPFAKE";
   source?: string;
   scene_description?: string;
   detected_objects?: string[];
   style?: string;
-  authenticity_signals?: Record<string, { score: number; bucket: "LOW" | "MEDIUM" | "HIGH"; explanation?: string }>;
+  content_type?: string;
+  context_tags?: string[];
+  recognized_landmark?: string | null;
+  top_signals?: string[];
+  rejected_verdicts?: string[];
+  authenticity_signals?: Record<string, { score: number; bucket: "LOW" | "MEDIUM" | "HIGH"; explanation?: string; technical_only?: boolean }>;
   why?: string;
   if_uncertain?: string | null;
   metadata: {
     model: string;
     latency_ms: number;
     timestamp: string;
+    device_model?: string | null;
+    capture_timestamp?: string | null;
+    capture_location?: string | null;
     raw_metadata?: Record<string, unknown>;
   };
   // Extended forensics fields
@@ -91,7 +112,14 @@ export type PrimaryVerdict =
   | "AI_GENERATED"
   | "EDITED"
   | "MIXED"
-  | "UNCERTAIN";
+  | "UNCERTAIN"
+  | "AUTHENTIC_REAL_PHOTOGRAPH"
+  | "LIKELY_REAL_CAMERA_PHOTO"
+  | "AI_GENERATED_SYNTHETIC_IMAGE"
+  | "DIGITAL_ARTWORK_ILLUSTRATION"
+  | "HAND_DRAWN_SKETCH_ARTWORK"
+  | "EDITED_MANIPULATED_IMAGE"
+  | "COMPOSITE_POTENTIAL_DEEPFAKE";
 
 export interface Dimensions {
   truth_score: number;
