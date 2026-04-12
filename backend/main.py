@@ -149,6 +149,9 @@ class MetadataInfo(BaseModel):
     latency_ms: int
     timestamp: str
     raw_metadata: Optional[dict] = None
+    device_model: Optional[str] = None
+    capture_timestamp: Optional[str] = None
+    capture_location: Optional[str] = None
 
 
 class PrimaryVerdict(str, Enum):
@@ -167,6 +170,13 @@ class PrimaryVerdict(str, Enum):
     EDITED = "EDITED"
     MIXED = "MIXED"
     UNCERTAIN = "UNCERTAIN"
+    AUTHENTIC_REAL_PHOTOGRAPH = "AUTHENTIC_REAL_PHOTOGRAPH"
+    LIKELY_REAL_CAMERA_PHOTO = "LIKELY_REAL_CAMERA_PHOTO"
+    AI_GENERATED_SYNTHETIC_IMAGE = "AI_GENERATED_SYNTHETIC_IMAGE"
+    DIGITAL_ARTWORK_ILLUSTRATION = "DIGITAL_ARTWORK_ILLUSTRATION"
+    HAND_DRAWN_SKETCH_ARTWORK = "HAND_DRAWN_SKETCH_ARTWORK"
+    EDITED_MANIPULATED_IMAGE = "EDITED_MANIPULATED_IMAGE"
+    COMPOSITE_POTENTIAL_DEEPFAKE = "COMPOSITE_POTENTIAL_DEEPFAKE"
 
 
 class DimensionsInfo(BaseModel):
@@ -185,6 +195,24 @@ class TruthExpandedInfo(BaseModel):
     explanation: str = ""
     evidence: str = ""
     sources: List[str] = Field(default_factory=list)
+
+
+class NewsArticleInfo(BaseModel):
+    title: str = ""
+    source: str = ""
+    url: str = ""
+    published_at: str = ""
+    description: str = ""
+
+
+class NewsVerificationInfo(BaseModel):
+    available: bool = True
+    message: str = ""
+    corroboration_score: Optional[float] = None
+    source_count: int = 0
+    articles: List[NewsArticleInfo] = Field(default_factory=list)
+    verification_label: str = ""
+    contradiction_detected: bool = False
 
 
 class AiExpandedInfo(BaseModel):
@@ -221,10 +249,16 @@ class AnalysisResponse(BaseModel):
     # New optional fields from extended forensics layers
     audio_score: Optional[float] = None
     news_consistency_score: Optional[float] = None
+    news_verification: Optional[NewsVerificationInfo] = None
     ocr_text: Optional[str] = None
     scene_description: Optional[str] = None
     detected_objects: Optional[List[str]] = None
     style: Optional[str] = None
+    content_type: Optional[str] = None
+    context_tags: Optional[List[str]] = None
+    recognized_landmark: Optional[str] = None
+    top_signals: Optional[List[str]] = None
+    rejected_verdicts: Optional[List[str]] = None
     authenticity_signals: Optional[dict] = None
     why: Optional[str] = None
     if_uncertain: Optional[str] = None

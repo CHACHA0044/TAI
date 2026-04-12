@@ -1,7 +1,7 @@
 "use client";
 
-import { ReactElement, useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { ReactElement, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -24,8 +24,11 @@ import { composeVerdict } from "@/lib/verdict-composer";
 import { MetricCardData, MetricKey } from "./result/metric-types";
 import { ScoreCardGrid } from "./result/score-card-grid";
 import { MetricModal } from "./result/metric-modal";
+import { NewsVerificationPanel } from "./result/news-verification-panel";
 
 const METRIC_VISIBILITY_THRESHOLD = 0.18;
+const IMAGE_SIGNAL_VISIBILITY_THRESHOLD = 0.28;
+const MAX_PROMINENT_IMAGE_METRICS = 4;
 
 interface ResultDisplayProps {
   result: AnalysisResult;
@@ -117,6 +120,8 @@ function metricBoostByVerdict(verdict: AnalysisResult["primary_verdict"]): Parti
 
 export function ResultDisplay({ result }: ResultDisplayProps) {
   const [activeMetric, setActiveMetric] = useState<MetricCardData | null>(null);
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const imageModalRef = useRef<HTMLDivElement>(null);
 
   const truth = result.dimensions ? toRatio(result.dimensions.truth_score) : toRatio(result.truth_score);
   const verifiability = result.dimensions?.verifiability !== undefined ? toRatio(result.dimensions.verifiability) : 0.5;
@@ -151,28 +156,63 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
 
     switch (result.category) {
       case "AI_GENERATED":
+      case "AI_GENERATED_SYNTHETIC_IMAGE":
         return {
-          label: "Likely AI-Generated Image",
+          label: "AI-Generated Synthetic Image",
           color: "text-rose-400",
           bg: "bg-rose-500/10",
           border: "border-rose-500/30",
           icon: ShieldAlert,
         };
       case "EDITED":
+      case "EDITED_MANIPULATED_IMAGE":
         return {
-          label: "Likely Edited / Composite",
+          label: "Edited / Manipulated Image",
           color: "text-amber-400",
           bg: "bg-amber-500/10",
           border: "border-amber-500/30",
           icon: ShieldQuestion,
         };
       case "MIXED":
+      case "COMPOSITE_POTENTIAL_DEEPFAKE":
         return {
-          label: "Mixed Authenticity Signals",
+          label: "Composite / Potential Deepfake",
           color: "text-purple-400",
           bg: "bg-purple-500/10",
           border: "border-purple-500/30",
           icon: ShieldQuestion,
+        };
+      case "AUTHENTIC_REAL_PHOTOGRAPH":
+        return {
+          label: "Authentic Real Photograph",
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/30",
+          icon: ShieldCheck,
+        };
+      case "LIKELY_REAL_CAMERA_PHOTO":
+        return {
+          label: "Likely Real Camera Photo",
+          color: "text-emerald-300",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/25",
+          icon: ShieldCheck,
+        };
+      case "DIGITAL_ARTWORK_ILLUSTRATION":
+        return {
+          label: "Digital Artwork / Illustration",
+          color: "text-fuchsia-300",
+          bg: "bg-fuchsia-500/10",
+          border: "border-fuchsia-500/30",
+          icon: CircleDot,
+        };
+      case "HAND_DRAWN_SKETCH_ARTWORK":
+        return {
+          label: "Hand-Drawn Sketch / Artwork",
+          color: "text-amber-300",
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          icon: CircleDot,
         };
       case "UNCERTAIN":
         return {
@@ -406,9 +446,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           indicators: [value?.bucket ? `Severity bucket: ${value.bucket}` : "", `Signal score: ${Math.round(score * 100)}%`].filter(Boolean),
           interpretation: "Higher values indicate stronger forensic concern for this specific signal.",
           confidenceContext: confidenceNarrative(confidence),
+          technicalOnly: !!value?.technical_only,
         } as MetricCardData;
       })
-      .filter((metric) => metric.score >= METRIC_VISIBILITY_THRESHOLD || metric.score >= 0.5)
+      .filter((metric) => metric.score >= IMAGE_SIGNAL_VISIBILITY_THRESHOLD || metric.technicalOnly)
       .sort((a, b) => b.relevance - a.relevance);
   }, [result.category, result.authenticity_signals, confidence]);
 
@@ -418,6 +459,26 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
   const imageConfidencePercent = result.confidence !== undefined
     ? Math.round(result.confidence)
     : Math.round(result.confidence_score * 100);
+  const prominentImageMetrics = imageMetrics.filter((metric) => !metric.technicalOnly).slice(0, MAX_PROMINENT_IMAGE_METRICS);
+  const technicalImageMetrics = imageMetrics.filter((metric) => metric.technicalOnly);
+
+  useEffect(() => {
+    if (!imageModalOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setImageModalOpen(false);
+      }
+    };
+
+    document.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleEscape);
+    };
+  }, [imageModalOpen]);
 
   return (
     <motion.div
@@ -509,56 +570,38 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       )}
 
       {result.category && (
-        <div className="glass rounded-3xl border border-white/10 p-6 space-y-6">
-          <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
-            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5 space-y-3">
-              <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-black">Scene description</p>
-              <p className="text-white/85 text-sm leading-relaxed">{result.scene_description || result.explanation}</p>
-              {result.detected_objects && result.detected_objects.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {result.detected_objects.slice(0, 8).map((objectName) => (
-                    <span key={objectName} className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
-                      {objectName}
-                    </span>
-                  ))}
-                </div>
-              )}
-              <div className="text-[11px] text-white/55">
-                Style: <span className="text-white/80 font-semibold">{result.style || "unknown"}</span>
-              </div>
+        <button
+          type="button"
+          onClick={() => setImageModalOpen(true)}
+          className="glass w-full rounded-3xl border border-white/10 p-6 space-y-5 text-left transition-all duration-300 hover:-translate-y-1 hover:border-white/25 hover:shadow-[0_20px_70px_rgba(34,211,238,0.2)]"
+        >
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/35">Forensic Preview</p>
+              <h3 className="text-xl font-black text-white mt-1">{categoryVerdict?.label || "Image analysis result"}</h3>
             </div>
-            <div className="rounded-2xl bg-black/20 border border-white/10 p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
-                <p className="text-2xl font-black text-white font-mono">{imageConfidencePercent}%</p>
-              </div>
-              <ScoreBar label="" score={imageConfidenceRatio} showPercentage={false} color="bg-cyan-500" />
-              <p className="text-[11px] text-cyan-300">{confidenceLabel(imageConfidenceRatio)}</p>
-              <div className="text-[10px] text-white/45">Primary source marker: {result.source && result.source !== "Unknown" ? result.source : "No explicit generator signature found"}</div>
-            </div>
+            <span className="text-xs text-cyan-300 font-semibold">Open full report ↗</span>
           </div>
-
-          {imageMetrics.length > 0 && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Key forensic signals</h3>
-                <p className="text-[11px] text-white/45">Showing strongest indicators only</p>
-              </div>
-              <ScoreCardGrid metrics={imageMetrics} onOpenMetric={setActiveMetric} />
+          <p className="text-sm text-white/75 leading-relaxed">
+            {result.scene_description || result.explanation}
+          </p>
+          {prominentImageMetrics.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {prominentImageMetrics.slice(0, 3).map((signal) => (
+                <span key={signal.key} className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300">
+                  {signal.label}
+                </span>
+              ))}
             </div>
           )}
-
-          <details className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
-            <summary className="cursor-pointer text-xs font-bold text-white/80 uppercase tracking-wider">
-              Technical details
-            </summary>
-            <div className="mt-3 text-xs text-white/70 space-y-2">
-              {result.if_uncertain && <p><span className="text-white/45">Uncertainty note:</span> {result.if_uncertain}</p>}
-              <p><span className="text-white/45">Why this result:</span> {result.why || result.explanation}</p>
-              <p><span className="text-white/45">Engine trigger:</span> {result.triggered_rule || "N/A"}</p>
+          <div className="rounded-2xl bg-black/20 border border-white/10 p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
+              <p className="text-xl font-black text-white font-mono">{imageConfidencePercent}%</p>
             </div>
-          </details>
-        </div>
+            <ScoreBar label="" score={imageConfidenceRatio} showPercentage={false} color="bg-cyan-500" />
+          </div>
+        </button>
       )}
 
       {!result.category && (
@@ -594,24 +637,6 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                 )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {result.category && result.signals && result.signals.length > 0 && (
-        <div className="glass rounded-3xl border border-white/10 p-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Info className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Signal checks</h3>
-          </div>
-          <div className="grid gap-2">
-            {result.signals.map((signal, i) => (
-              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${signal.verified ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}`}>
-                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${signal.verified ? "bg-emerald-500" : "bg-rose-500"}`} />
-                <span className="text-xs font-semibold text-white/80 flex-1">{signal.source}</span>
-                <span className="text-[10px] font-mono text-white/40">{Math.round(signal.confidence * 100)}%</span>
-              </div>
-            ))}
           </div>
         </div>
       )}
@@ -711,6 +736,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       )}
 
+      {result.news_verification && (
+        <NewsVerificationPanel nv={result.news_verification} />
+      )}
+
       {result.ocr_text && result.ocr_text.trim().length > 0 && (
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -724,6 +753,116 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           <p className="text-[10px] text-white/30 mt-3">Text extracted from the image via OCR and fed into the truthfulness pipeline.</p>
         </div>
       )}
+
+      <AnimatePresence>
+        {result.category && imageModalOpen && (
+          <motion.div
+            className="fixed inset-0 z-[140] flex items-center justify-center p-4 sm:p-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setImageModalOpen(false)}
+            aria-label="Close modal"
+          >
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+            <motion.div
+              ref={imageModalRef}
+              className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-[2rem] border border-white/20 bg-slate-950/95 shadow-[0_24px_120px_rgba(0,0,0,0.75)] p-6 sm:p-8 space-y-6"
+              initial={{ opacity: 0, scale: 0.97, y: 18 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 12 }}
+              transition={{ duration: 0.2, ease: "easeOut" }}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-2">
+                  <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/35">Image forensic report</p>
+                  <h3 className={`text-2xl sm:text-3xl font-black ${categoryVerdict?.color || "text-white"}`}>{categoryVerdict?.label || "Forensic verdict"}</h3>
+                  <p className="text-sm text-white/70 leading-relaxed max-w-3xl">{result.scene_description || result.explanation}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setImageModalOpen(false)}
+                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="grid gap-5 lg:grid-cols-[1.25fr_1fr]">
+                <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5 space-y-4">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Caption & entities</p>
+                  {result.detected_objects && result.detected_objects.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {result.detected_objects.slice(0, 10).map((objectName) => (
+                        <span key={objectName} className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/25 text-cyan-300">
+                          {objectName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {(result.context_tags || []).length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {(result.context_tags || []).slice(0, 8).map((tag) => (
+                        <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/65">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="rounded-2xl bg-black/30 border border-white/10 p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
+                    <p className="text-2xl font-black text-white font-mono">{imageConfidencePercent}%</p>
+                  </div>
+                  <ScoreBar label="" score={imageConfidenceRatio} showPercentage={false} color="bg-cyan-500" />
+                  <p className="text-[11px] text-cyan-300">{confidenceLabel(imageConfidenceRatio)}</p>
+                  <p className="text-[10px] text-white/45">Source marker: {result.source && result.source !== "Unknown" ? result.source : "No explicit generator signature found"}</p>
+                </div>
+              </div>
+
+              {prominentImageMetrics.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <h4 className="text-sm font-bold text-white/85 uppercase tracking-wider">Top signals</h4>
+                    <p className="text-[11px] text-white/45">Relevance-filtered</p>
+                  </div>
+                  <ScoreCardGrid metrics={prominentImageMetrics} onOpenMetric={setActiveMetric} />
+                </div>
+              )}
+
+              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 space-y-2">
+                <h4 className="text-xs font-bold text-white/90 uppercase tracking-wider">Why this result?</h4>
+                <p className="text-sm text-white/75">{result.why || result.explanation}</p>
+                {result.rejected_verdicts && result.rejected_verdicts.length > 0 && (
+                  <p className="text-xs text-white/55">Rejected alternatives: {result.rejected_verdicts.join(", ")}</p>
+                )}
+                {result.if_uncertain && <p className="text-xs text-amber-300/90">Uncertainty: {result.if_uncertain}</p>}
+              </div>
+
+              <details className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                <summary className="cursor-pointer text-xs font-bold text-white/80 uppercase tracking-wider">Technical details</summary>
+                <div className="mt-3 space-y-3">
+                  {technicalImageMetrics.length > 0 && (
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">Secondary/technical signals</p>
+                      <ScoreCardGrid metrics={technicalImageMetrics} onOpenMetric={setActiveMetric} />
+                    </div>
+                  )}
+                  <div className="text-xs text-white/65 space-y-1">
+                    <p><span className="text-white/45">Engine trigger:</span> {result.triggered_rule || "N/A"}</p>
+                    <p><span className="text-white/45">Content type:</span> {result.content_type || "N/A"}</p>
+                    {result.metadata?.device_model && <p><span className="text-white/45">Device model:</span> {result.metadata.device_model}</p>}
+                    {result.metadata?.capture_timestamp && <p><span className="text-white/45">Capture timestamp:</span> {result.metadata.capture_timestamp}</p>}
+                    {result.metadata?.capture_location && <p><span className="text-white/45">Capture location:</span> {result.metadata.capture_location}</p>}
+                  </div>
+                </div>
+              </details>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <MetricModal metric={activeMetric} isOpen={!!activeMetric} onClose={() => setActiveMetric(null)} />
 

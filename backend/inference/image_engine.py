@@ -2,14 +2,20 @@ import io
 import itertools
 import logging
 import os
+import re
 import time
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 from PIL import Image, ImageChops, ImageEnhance, ImageFilter, ImageStat
 
 from utils.analysis_utils import get_verdict_and_risk
 
 logger = logging.getLogger("truthguard")
+OBJECT_DETECTION_CONFIDENCE_THRESHOLD = 0.28
+LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD = 0.80
+AUTHENTIC_PHOTO_THRESHOLD = 0.78
+LIKELY_REAL_PHOTO_THRESHOLD = 0.62
+VERDICT_AMBIGUITY_MARGIN = 0.08
 
 
 def _mean(values: List[float]) -> float:
@@ -170,7 +176,7 @@ class ImageEngine:
 
         return source
 
-    def _analyze_classifier(self, image: Image.Image) -> Tuple[float, float, List[str]]:
+    def _analyze_classifier(self, image: Image.Image) -> Tuple[float, float, List[Tuple[str, float]]]:
         if not (self.using_transformers and self.model and self.processor):
             return 0.5, 0.4, []
 
@@ -187,7 +193,7 @@ class ImageEngine:
             labels = self.model.config.id2label
             prob_dict = {labels[i]: float(probs[0][i].item()) for i in range(len(labels))}
             sorted_pairs = sorted(prob_dict.items(), key=lambda x: x[1], reverse=True)
-            top_labels = [name for name, _ in sorted_pairs[:5]]
+            top_predictions = [(name, float(score)) for name, score in sorted_pairs[:5]]
 
             deepfake_keys = [k for k in prob_dict if "deep" in k.lower() or "fake" in k.lower() or "ai" in k.lower()]
             real_keys = [k for k in prob_dict if "real" in k.lower() or "auth" in k.lower() or "human" in k.lower()]
@@ -204,7 +210,7 @@ class ImageEngine:
             if real_prob > ai_prob:
                 ai_prob = max(0.0, 1.0 - real_prob)
 
-            return min(max(ai_prob, 0.0), 1.0), min(max(confidence, 0.0), 1.0), top_labels
+            return min(max(ai_prob, 0.0), 1.0), min(max(confidence, 0.0), 1.0), top_predictions
         except Exception as exc:
             logger.warning(f"Classifier inference failed: {exc}")
             return 0.5, 0.4, []
@@ -271,9 +277,11 @@ class ImageEngine:
             return "cinematic"
         return "photo"
 
-    def _infer_detected_objects(self, top_labels: List[str], ocr_text: str) -> List[str]:
+    def _infer_detected_objects(self, top_predictions: List[Tuple[str, float]], ocr_text: str) -> List[str]:
         candidates: List[str] = []
-        for label in top_labels:
+        for label, confidence in top_predictions:
+            if confidence < OBJECT_DETECTION_CONFIDENCE_THRESHOLD:
+                continue
             clean = label.replace("_", " ").replace("-", " ").strip()
             parts = [p.strip() for p in clean.split(",") if p.strip()]
             candidates.extend(parts if parts else [clean])
@@ -291,6 +299,133 @@ class ImageEngine:
                 seen.add(key)
                 objects.append(item)
         return objects[:8]
+
+    def _extract_metadata_evidence(self, metadata: Dict[str, Any]) -> Dict[str, Any]:
+        def _pick(*keys: str) -> Optional[str]:
+            for key in keys:
+                value = metadata.get(key)
+                if value:
+                    return str(value)
+            return None
+
+        model = _pick("EXIF_Model", "model")
+        make = _pick("EXIF_Make", "make")
+        timestamp = _pick("EXIF_DateTimeOriginal", "EXIF_DateTime", "date:create", "date")
+        location = _pick("EXIF_GPSInfo", "GPSLatitude", "GPSLongitude")
+
+        has_camera_indicators = any(
+            metadata.get(key) is not None
+            for key in [
+                "EXIF_Model",
+                "EXIF_Make",
+                "EXIF_ISOSpeedRatings",
+                "EXIF_ExposureTime",
+                "EXIF_FNumber",
+                "EXIF_FocalLength",
+            ]
+        )
+
+        blob = str(metadata).lower()
+        has_generator_markers = any(
+            marker in blob
+            for marker in ["midjourney", "stable diffusion", "openai", "dall", "generated", "firefly", "gemini", "sora"]
+        )
+
+        return {
+            "device_model": f"{make} {model}".strip() if make and model else (model or make),
+            "timestamp": timestamp,
+            "location": location,
+            "has_camera_indicators": has_camera_indicators,
+            "has_generator_markers": has_generator_markers,
+        }
+
+    def _infer_content_type(
+        self,
+        top_predictions: List[Tuple[str, float]],
+        ocr_text: str,
+        source: str,
+        neural_score: float,
+        raw_signal_scores: Dict[str, float],
+    ) -> Tuple[str, List[str], bool]:
+        label_blob = " ".join(label.lower() for label, _ in top_predictions)
+        text_blob = (ocr_text or "").lower()
+        blob = f"{label_blob} {text_blob}"
+        context_tags: List[str] = []
+
+        human_present = any(
+            marker in blob
+            for marker in ["person", "face", "portrait", "man", "woman", "child", "selfie", "human"]
+        )
+        if human_present:
+            context_tags.append("human-subject")
+
+        if any(marker in blob for marker in ["sketch", "pencil", "charcoal", "line art", "hand-drawn", "doodle"]):
+            return "HAND_DRAWN", context_tags + ["artwork"], human_present
+
+        if any(marker in blob for marker in ["illustration", "painting", "watercolor", "anime", "cartoon", "comic"]):
+            return "DIGITAL_ARTWORK", context_tags + ["illustration"], human_present
+
+        if any(marker in blob for marker in ["render", "cgi", "3d", "blender", "unreal", "raytraced"]):
+            return "CGI_RENDER", context_tags + ["render"], human_present
+
+        if any(marker in blob for marker in ["screenshot", "ui", "interface", "dashboard", "meme", "tweet", "reddit"]):
+            return "SCREENSHOT_UI_MEME", context_tags + ["screen-content"], human_present
+
+        if source != "Unknown" or neural_score >= 0.78:
+            return "AI_SYNTHETIC", context_tags + ["synthetic-indicators"], human_present
+
+        if raw_signal_scores.get("ela", 0.0) > 0.72 and raw_signal_scores.get("edge_artifacts", 0.0) > 0.58:
+            return "EDITED_COMPOSITE", context_tags + ["composite-risk"], human_present
+
+        if text_blob and len(text_blob) > 30:
+            context_tags.append("embedded-text")
+
+        return "REAL_PHOTO", context_tags or ["natural-scene"], human_present
+
+    def _best_effort_landmark_or_entity(
+        self,
+        top_predictions: List[Tuple[str, float]],
+        ocr_text: str,
+    ) -> Tuple[Optional[str], List[str]]:
+        landmark_patterns = {
+            "Eiffel Tower": [r"\beiffel\b"],
+            "Statue of Liberty": [r"\bstatue of liberty\b"],
+            "Taj Mahal": [r"\btaj mahal\b"],
+            "Burj Khalifa": [r"\bburj khalifa\b"],
+            "Golden Gate Bridge": [r"\bgolden gate\b"],
+            "Colosseum": [r"\bcolosseum\b"],
+            "Big Ben": [r"\bbig ben\b"],
+        }
+
+        best_name: Optional[str] = None
+        best_confidence = 0.0
+        fallback_entities: List[str] = []
+        text_blob = (ocr_text or "").lower()
+
+        for label, confidence in top_predictions:
+            normalized = label.replace("_", " ").lower()
+            for name, patterns in landmark_patterns.items():
+                if any(re.search(pattern, normalized) for pattern in patterns):
+                    if confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD and confidence > best_confidence:
+                        best_name = name
+                        best_confidence = confidence
+                    elif confidence >= 0.4:
+                        fallback_entities.append("landmark structure")
+
+            if confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD:
+                fallback_entities.append(label.replace("_", " "))
+            elif confidence >= 0.45:
+                fallback_entities.append("identified object")
+
+        if not best_name:
+            for name, patterns in landmark_patterns.items():
+                if any(re.search(pattern, text_blob) for pattern in patterns):
+                    best_name = name
+                    best_confidence = LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD
+                    break
+
+        deduped_entities = list(dict.fromkeys(entity for entity in fallback_entities if entity))[:6]
+        return best_name if best_confidence >= LANDMARK_RECOGNITION_CONFIDENCE_THRESHOLD else None, deduped_entities
 
     def _compute_forensic_signals(
         self,
@@ -354,7 +489,7 @@ class ImageEngine:
         has_generator = any(k in meta_blob for k in ["midjourney", "stable diffusion", "openai", "dall", "generated"])
         metadata_anomalies = 0.15
         if not metadata:
-            metadata_anomalies = 0.5
+            metadata_anomalies = 0.28
         if has_generator:
             metadata_anomalies = 0.92
         elif has_camera:
@@ -406,12 +541,76 @@ class ImageEngine:
 
         return authenticity_signals, raw_scores, signal_hits
 
+    def _contextualize_forensic_signals(
+        self,
+        raw_scores: Dict[str, float],
+        explanations: Dict[str, Dict[str, Any]],
+        *,
+        content_type: str,
+        human_present: bool,
+        metadata_evidence: Dict[str, Any],
+        neural_confidence: float,
+    ) -> Tuple[Dict[str, Dict[str, Any]], Dict[str, float], List[str], List[str]]:
+        weighted = dict(raw_scores)
+        technical_only: Set[str] = set()
+
+        context_scale = {
+            "REAL_PHOTO": 1.0,
+            "AI_SYNTHETIC": 1.0,
+            "EDITED_COMPOSITE": 1.0,
+            "DIGITAL_ARTWORK": 0.35,
+            "HAND_DRAWN": 0.2,
+            "CGI_RENDER": 0.35,
+            "SCREENSHOT_UI_MEME": 0.25,
+        }.get(content_type, 1.0)
+
+        if context_scale < 1.0:
+            for key in ["ela", "compression_anomalies", "lighting_consistency", "shadow_mismatch", "noise_pattern_mismatch"]:
+                weighted[key] = weighted.get(key, 0.0) * context_scale
+
+        if not human_present:
+            weighted["face_hand_inconsistency"] = min(weighted.get("face_hand_inconsistency", 0.0) * 0.1, 0.08)
+            technical_only.add("face_hand_inconsistency")
+
+        confidence_weight = 0.7 + (max(0.0, min(1.0, neural_confidence)) * 0.3)
+        for key in ["texture_consistency", "noise_pattern_mismatch", "object_realism"]:
+            weighted[key] = max(0.0, min(1.0, weighted.get(key, 0.0) * confidence_weight))
+
+        if metadata_evidence.get("has_camera_indicators"):
+            weighted["metadata_anomalies"] = weighted.get("metadata_anomalies", 0.0) * 0.45
+        if metadata_evidence.get("has_generator_markers"):
+            weighted["metadata_anomalies"] = max(weighted.get("metadata_anomalies", 0.0), 0.88)
+
+        if metadata_evidence.get("has_camera_indicators") and weighted.get("metadata_anomalies", 0.0) > 0.7:
+            weighted["metadata_anomalies"] *= 0.6
+
+        weighted_signals: Dict[str, Dict[str, Any]] = {}
+        signal_hits: List[str] = []
+        sorted_for_top = sorted(weighted.items(), key=lambda item: item[1], reverse=True)
+        top_signals = [name for name, score in sorted_for_top if score >= 0.35][:5]
+
+        for name, score in weighted.items():
+            bucket = self._bucket(score)
+            base = explanations.get(name, {})
+            weighted_signals[name] = {
+                "score": round(float(score), 4),
+                "bucket": bucket,
+                "explanation": base.get("explanation", "Forensic authenticity signal."),
+                "technical_only": name in technical_only,
+            }
+            if bucket in {"MEDIUM", "HIGH"}:
+                signal_hits.append(f"{name}:{bucket}")
+
+        return weighted_signals, weighted, signal_hits, top_signals
+
     def _compose_verdict(
         self,
+        content_type: str,
         source: str,
         neural_score: float,
         signal_scores: Dict[str, float],
-    ) -> Tuple[str, float, Dict[str, float], str]:
+        metadata_evidence: Dict[str, Any],
+    ) -> Tuple[str, float, Dict[str, float], str, List[str]]:
         ai_markers = [
             neural_score,
             signal_scores.get("texture_consistency", 0.0),
@@ -429,25 +628,54 @@ class ImageEngine:
 
         ai_likelihood = _mean(ai_markers)
         edit_likelihood = _mean(edit_markers)
+        rejected: List[str] = []
 
-        if source != "Unknown":
-            ai_likelihood = max(ai_likelihood, 0.92)
+        if source != "Unknown" or metadata_evidence.get("has_generator_markers"):
+            ai_likelihood = max(ai_likelihood, 0.85)
 
-        if ai_likelihood >= 0.74 and edit_likelihood >= 0.56:
-            verdict = "MIXED"
+        if content_type == "HAND_DRAWN":
+            verdict = "HAND_DRAWN_SKETCH_ARTWORK"
+            triggered_rule = "content_type_hand_drawn"
+            rejected = ["Authentic Real Photograph", "AI-Generated Synthetic Image"]
+        elif content_type in {"DIGITAL_ARTWORK", "CGI_RENDER", "SCREENSHOT_UI_MEME"} and ai_likelihood < 0.72:
+            verdict = "DIGITAL_ARTWORK_ILLUSTRATION"
+            triggered_rule = "non_photographic_visual_style"
+            rejected = ["Authentic Real Photograph"]
+        elif ai_likelihood >= 0.74 and edit_likelihood >= 0.62:
+            verdict = "COMPOSITE_POTENTIAL_DEEPFAKE"
             triggered_rule = "ai_and_edit_signals_high"
+            rejected = ["Likely Real Camera Photo"]
         elif ai_likelihood >= 0.74:
-            verdict = "AI_GENERATED"
+            verdict = "AI_GENERATED_SYNTHETIC_IMAGE"
             triggered_rule = "strong_ai_artifacts"
-        elif edit_likelihood >= 0.64:
-            verdict = "EDITED"
+            rejected = ["Likely Real Camera Photo"]
+        elif edit_likelihood >= 0.66:
+            verdict = "EDITED_MANIPULATED_IMAGE"
             triggered_rule = "forensic_edit_anomalies"
-        elif ai_likelihood <= 0.36 and edit_likelihood <= 0.38:
-            verdict = "REAL"
-            triggered_rule = "natural_photo_signature"
+            rejected = ["Authentic Real Photograph"]
         else:
-            verdict = "UNCERTAIN"
-            triggered_rule = "conflicting_or_weak_signals"
+            camera_bonus = 0.09 if metadata_evidence.get("has_camera_indicators") else 0.0
+            real_score = ((1.0 - ai_likelihood) * 0.58) + ((1.0 - edit_likelihood) * 0.32) + camera_bonus
+            if real_score >= AUTHENTIC_PHOTO_THRESHOLD:
+                verdict = "AUTHENTIC_REAL_PHOTOGRAPH"
+                triggered_rule = "camera_consistent_real_photo"
+                rejected = ["AI-Generated Synthetic Image", "Edited / Manipulated Image"]
+            elif real_score >= LIKELY_REAL_PHOTO_THRESHOLD:
+                verdict = "LIKELY_REAL_CAMERA_PHOTO"
+                triggered_rule = "real_photo_with_limited_noise"
+                rejected = ["AI-Generated Synthetic Image"]
+            elif abs(ai_likelihood - edit_likelihood) < VERDICT_AMBIGUITY_MARGIN:
+                verdict = "UNCERTAIN"
+                triggered_rule = "conflicting_or_weak_signals"
+                rejected = ["Authentic Real Photograph", "AI-Generated Synthetic Image"]
+            elif ai_likelihood > edit_likelihood:
+                verdict = "AI_GENERATED_SYNTHETIC_IMAGE"
+                triggered_rule = "ai_signals_dominate"
+                rejected = ["Likely Real Camera Photo"]
+            else:
+                verdict = "EDITED_MANIPULATED_IMAGE"
+                triggered_rule = "edit_signals_dominate"
+                rejected = ["Authentic Real Photograph"]
 
         uncertainty = 1.0 - abs(ai_likelihood - edit_likelihood)
         confidence = float(
@@ -462,15 +690,17 @@ class ImageEngine:
             )
         )
 
-        return verdict, confidence, {"ai_likelihood": ai_likelihood, "edit_likelihood": edit_likelihood}, triggered_rule
+        return verdict, confidence, {"ai_likelihood": ai_likelihood, "edit_likelihood": edit_likelihood}, triggered_rule, rejected
 
     def _compose_why(
         self,
         primary_verdict: str,
-        style: str,
+        content_type: str,
         scene_description: str,
         authenticity_signals: Dict[str, Dict[str, Any]],
         source: str,
+        top_signals: List[str],
+        rejected_verdicts: List[str],
     ) -> Tuple[str, Optional[str], List[str]]:
         strongest = sorted(
             authenticity_signals.items(),
@@ -484,23 +714,27 @@ class ImageEngine:
             reasons.append(f"Metadata/source markers indicate {source}.")
         if top:
             reasons.append(f"Most influential forensic signals: {', '.join(top)}.")
+        if top_signals:
+            reasons.append(f"Top weighted signal set: {', '.join(top_signals)}.")
         reasons.append(f"Scene interpretation: {scene_description}")
+        if rejected_verdicts:
+            reasons.append(f"Competing verdicts rejected: {', '.join(rejected_verdicts)}.")
 
-        if primary_verdict == "REAL":
+        if primary_verdict in {"AUTHENTIC_REAL_PHOTOGRAPH", "LIKELY_REAL_CAMERA_PHOTO"}:
             why = "Visual evidence appears consistent with a natural photograph."
             uncertain = None
-        elif primary_verdict == "AI_GENERATED":
+        elif primary_verdict == "AI_GENERATED_SYNTHETIC_IMAGE":
             why = "Synthetic-generation cues dominate over camera-authenticity cues."
             uncertain = None
-        elif primary_verdict == "EDITED":
+        elif primary_verdict in {"EDITED_MANIPULATED_IMAGE", "COMPOSITE_POTENTIAL_DEEPFAKE"}:
             why = "Localized manipulation/compression signals suggest post-processing or compositing."
             uncertain = None
-        elif primary_verdict == "MIXED":
-            why = "The image shows both synthetic-generation and edit-like characteristics."
-            uncertain = "Multiple strong but competing clues are present. Request the original source file or sequence for manual review."
+        elif primary_verdict in {"DIGITAL_ARTWORK_ILLUSTRATION", "HAND_DRAWN_SKETCH_ARTWORK"}:
+            why = f"Content classification indicates a non-photographic medium ({content_type.lower().replace('_', ' ')}), so photo-forensic metrics were de-emphasized."
+            uncertain = None
         else:
             why = "Signals are inconclusive and do not strongly support one authenticity class."
-            uncertain = "Key cues conflict or are weak. Manual forensic review with source provenance is recommended."
+            uncertain = "Key cues conflict or are weak after context-aware weighting. Manual forensic review with source provenance is recommended."
 
         return why, uncertain, reasons
 
@@ -512,10 +746,12 @@ class ImageEngine:
             image = Image.open(io.BytesIO(image_bytes))
             img_rgb = image.convert("RGB")
 
-            neural_score, neural_confidence, top_labels = self._analyze_classifier(img_rgb)
+            neural_score, neural_confidence, top_predictions = self._analyze_classifier(img_rgb)
+            top_labels = [label for label, _ in top_predictions]
             metadata = self.extract_metadata(image)
             source = self._detect_source(filename, metadata)
             ocr_text = self._extract_ocr_text(img_rgb)
+            metadata_evidence = self._extract_metadata_evidence(metadata)
 
             authenticity_signals, raw_signal_scores, signal_hits = self._compute_forensic_signals(
                 img_rgb,
@@ -523,21 +759,48 @@ class ImageEngine:
                 neural_score,
             )
 
-            verdict, verdict_confidence, aggregate_scores, triggered_rule = self._compose_verdict(
-                source,
-                neural_score,
-                raw_signal_scores,
+            content_type, context_tags, human_present = self._infer_content_type(
+                top_predictions=top_predictions,
+                ocr_text=ocr_text,
+                source=source,
+                neural_score=neural_score,
+                raw_signal_scores=raw_signal_scores,
+            )
+            named_landmark, fallback_entities = self._best_effort_landmark_or_entity(top_predictions, ocr_text)
+            if named_landmark:
+                context_tags.append("recognized-landmark")
+
+            authenticity_signals, weighted_signal_scores, signal_hits, top_signals = self._contextualize_forensic_signals(
+                raw_scores=raw_signal_scores,
+                explanations=authenticity_signals,
+                content_type=content_type,
+                human_present=human_present,
+                metadata_evidence=metadata_evidence,
+                neural_confidence=neural_confidence,
             )
 
-            style = self._infer_style(source, aggregate_scores["ai_likelihood"], 1.0 - raw_signal_scores["texture_consistency"], top_labels)
-            detected_objects = self._infer_detected_objects(top_labels, ocr_text)
+            verdict, verdict_confidence, aggregate_scores, triggered_rule, rejected_verdicts = self._compose_verdict(
+                content_type,
+                source,
+                neural_score,
+                weighted_signal_scores,
+                metadata_evidence,
+            )
+
+            style = self._infer_style(source, aggregate_scores["ai_likelihood"], 1.0 - weighted_signal_scores["texture_consistency"], top_labels)
+            detected_objects = self._infer_detected_objects(top_predictions, ocr_text)
+            if named_landmark:
+                detected_objects.insert(0, named_landmark)
+            detected_objects = list(dict.fromkeys(detected_objects + fallback_entities))[:8]
             scene_description = self._generate_scene_description(img_rgb, top_labels, detected_objects, style)
             why, uncertain_note, extra_reasons = self._compose_why(
                 verdict,
-                style,
+                content_type,
                 scene_description,
                 authenticity_signals,
                 source,
+                top_signals,
+                rejected_verdicts,
             )
 
             enriched = get_verdict_and_risk(
@@ -563,6 +826,11 @@ class ImageEngine:
                 "scene_description": scene_description,
                 "detected_objects": detected_objects,
                 "style": style,
+                "content_type": content_type,
+                "context_tags": list(dict.fromkeys(context_tags)),
+                "recognized_landmark": named_landmark,
+                "top_signals": top_signals,
+                "rejected_verdicts": rejected_verdicts,
                 "authenticity_signals": authenticity_signals,
                 "truth_score": round(1.0 - ai_generated_score, 4),
                 "ai_generated_score": round(ai_generated_score, 4),
@@ -608,6 +876,9 @@ class ImageEngine:
                     "latency_ms": elapsed_ms,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "raw_metadata": metadata,
+                    "device_model": metadata_evidence.get("device_model"),
+                    "capture_timestamp": metadata_evidence.get("timestamp"),
+                    "capture_location": metadata_evidence.get("location"),
                 },
                 "debug": {
                     **(enriched.get("debug") or {}),
@@ -617,7 +888,9 @@ class ImageEngine:
                         "top_labels": top_labels,
                         "aggregate_ai_likelihood": round(aggregate_scores["ai_likelihood"], 4),
                         "aggregate_edit_likelihood": round(aggregate_scores["edit_likelihood"], 4),
-                        "forensic_signal_scores": {k: round(float(v), 4) for k, v in raw_signal_scores.items()},
+                        "forensic_signal_scores": {k: round(float(v), 4) for k, v in weighted_signal_scores.items()},
+                        "forensic_signal_scores_raw": {k: round(float(v), 4) for k, v in raw_signal_scores.items()},
+                        "content_type": content_type,
                     },
                     "signal_hits": signal_hits,
                     "caption_model": self.caption_model_name if self.caption_enabled else "heuristic",
