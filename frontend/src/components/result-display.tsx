@@ -160,7 +160,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         };
       case "EDITED":
         return {
-          label: "Likely Edited / Composited",
+          label: "Likely Edited / Composite",
           color: "text-amber-400",
           bg: "bg-amber-500/10",
           border: "border-amber-500/30",
@@ -414,6 +414,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
 
   const primarySignals = metrics.slice(0, 3);
   const secondarySignals = metrics.slice(3);
+  const imageConfidenceRatio = toRatio(result.confidence ?? result.confidence_score);
+  const imageConfidencePercent = result.confidence !== undefined
+    ? Math.round(result.confidence)
+    : Math.round(result.confidence_score * 100);
 
   return (
     <motion.div
@@ -512,10 +516,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             <div className="rounded-2xl bg-black/20 border border-white/10 p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
-                <p className="text-2xl font-black text-white font-mono">{Math.round((result.confidence ?? result.confidence_score * 100))}%</p>
+                <p className="text-2xl font-black text-white font-mono">{imageConfidencePercent}%</p>
               </div>
-              <ScoreBar label="" score={toRatio(result.confidence ?? result.confidence_score)} showPercentage={false} color="bg-cyan-500" />
-              <p className="text-[11px] text-cyan-300">{confidenceLabel(toRatio(result.confidence ?? result.confidence_score))}</p>
+              <ScoreBar label="" score={imageConfidenceRatio} showPercentage={false} color="bg-cyan-500" />
+              <p className="text-[11px] text-cyan-300">{confidenceLabel(imageConfidenceRatio)}</p>
               <div className="text-[10px] text-white/45">Primary source marker: {result.source && result.source !== "Unknown" ? result.source : "No explicit generator signature found"}</div>
             </div>
           </div>

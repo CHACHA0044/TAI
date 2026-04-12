@@ -1,4 +1,5 @@
 import io
+import itertools
 import logging
 import os
 import time
@@ -108,6 +109,8 @@ class ImageEngine:
             diff = ImageEnhance.Brightness(diff).enhance(scale)
 
             pixels = list(diff.getdata())
+            if not pixels:
+                return 0.0
             pixels_sum = 0.0
             for p in pixels:
                 if isinstance(p, int):
@@ -215,9 +218,10 @@ class ImageEngine:
         try:
             logger.info(f"Loading caption model: {self.caption_model_name}")
             self.caption_processor = BlipProcessor.from_pretrained(self.caption_model_name)
+            device_type = self.device.type if HAS_TORCH and hasattr(self.device, "type") else "cpu"
             self.caption_model = BlipForConditionalGeneration.from_pretrained(
                 self.caption_model_name,
-                torch_dtype=torch.float16 if self.device.type == "cuda" else torch.float32,
+                torch_dtype=torch.float16 if device_type == "cuda" else torch.float32,
                 low_cpu_mem_usage=True,
             ).to(self.device)
             self.caption_model.eval()
@@ -295,7 +299,7 @@ class ImageEngine:
         ela_score = self.perform_ela(image_rgb)
 
         lap = image_rgb.filter(ImageFilter.FIND_EDGES)
-        edge_density = _mean([sum(pixel) / 765.0 for pixel in list(lap.getdata())[:50000]])
+        edge_density = _mean([sum(pixel) / 765.0 for pixel in itertools.islice(lap.getdata(), 50000)])
         edge_artifacts = float(max(0.0, min(1.0, abs(edge_density - 0.18) * 3.3)))
 
         smooth = image_rgb.filter(ImageFilter.GaussianBlur(radius=2.0))
