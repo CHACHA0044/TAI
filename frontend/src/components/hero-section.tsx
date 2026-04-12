@@ -30,10 +30,10 @@ export function HeroSection() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          Detect MisInformation
+          Demolish Digital
           <br />
           <span className="bg-gradient-to-r from-emerald-400 via-teal-400 to-cyan-500 bg-clip-text text-transparent">
-            With PinPoint Accuracy.
+            Deception.
           </span>
         </motion.h1>
 
