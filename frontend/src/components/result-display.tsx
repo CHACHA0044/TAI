@@ -490,55 +490,60 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-7 sm:space-y-8"
     >
-      <div className={`p-6 sm:p-8 md:p-10 rounded-[2rem] ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-3xl relative overflow-hidden group transition-all duration-500 hover:shadow-2xl`}>
-        <div className="absolute top-0 right-0 p-12 opacity-10 group-hover:opacity-20 transition-all duration-700 -rotate-12 translate-x-8 -translate-y-8">
-          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-48 h-48" /> : <VerdictIcon className="w-48 h-48" />; })()}
+      <div className={`p-6 md:p-8 rounded-[2.5rem] ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-3xl relative overflow-hidden group transition-all duration-500 hover:shadow-2xl`}>
+        <div className="absolute -top-12 -right-12 p-12 opacity-5 group-hover:opacity-10 transition-all duration-700 -rotate-12 scale-150 pointer-events-none">
+          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-64 h-64" /> : <VerdictIcon className="w-64 h-64" />; })()}
         </div>
 
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center gap-10">
-          <div className="flex items-start gap-6 flex-1 min-w-0">
-            <div className={`p-5 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-2xl flex-shrink-0`}>
+        <div className="relative z-10 space-y-8">
+          <div className="flex flex-col md:flex-row md:items-start gap-6 md:gap-8">
+            <div className={`p-5 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-2xl flex-shrink-0 w-fit`}>
               {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className={`w-10 h-10 ${categoryVerdict!.color}`} /> : <VerdictIcon className={`w-10 h-10 ${verdictStyle.color}`} />; })()}
             </div>
 
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-3 ml-0.5">Forensic Analysis Verdict</p>
-              <h2 className={`text-3xl md:text-4xl font-black tracking-tight leading-none ${result.category && categoryVerdict ? categoryVerdict.color : verdictStyle.color}`}>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 mb-3 ml-0.5">Forensic Verdict Summary</p>
+              <h2 className={`text-4xl md:text-5xl font-black tracking-tight leading-none ${result.category && categoryVerdict ? categoryVerdict.color : verdictStyle.color}`}>
                 {result.category && categoryVerdict ? categoryVerdict.label : composedVerdict.label}
               </h2>
-              <p className="text-base text-white/70 mt-4 max-w-2xl leading-relaxed">
+              <p className="text-lg text-white/70 mt-5 max-w-3xl leading-relaxed font-medium">
                 {result.category
                   ? (result.why || result.scene_description || "Detailed forensic evaluation completed across pixel-level and neural detection layers.")
                   : composedVerdict.explanation}
               </p>
-              <div className="mt-6 flex flex-wrap gap-3">
-                <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] text-white/80 font-bold backdrop-blur-md">
-                  <span className="uppercase tracking-widest text-white/40 text-[9px]">Decision Engine</span>
-                  <span className="font-mono text-cyan-400">{result.primary_verdict || "HYBRID_CORE"}</span>
-                </div>
-                {result.metadata?.model && (
-                  <div className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 text-[11px] text-white/80 font-bold backdrop-blur-md">
-                    <span className="uppercase tracking-widest text-white/40 text-[9px]">Active Layer</span>
-                    <span className="font-mono text-blue-400">{result.metadata.model}</span>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
 
-          <div className="xl:w-[320px] rounded-[2rem] border border-white/10 bg-black/40 p-6 sm:p-8 space-y-5 backdrop-blur-2xl shadow-inner relative overflow-hidden group/conf">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-0 group-hover/conf:opacity-100 transition-opacity" />
-            <div className="relative z-10">
-              <div className="flex items-baseline justify-between mb-2">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Certainty</p>
-                <p className="text-4xl font-black text-white font-mono tracking-tighter">{Math.round(confidence * 100)}<span className="text-xl text-white/40">%</span></p>
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-end">
+            <div className="flex flex-wrap gap-4">
+              <div className="px-5 py-3 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md flex flex-col gap-1.5">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-black">Decision Engine</span>
+                <span className="text-sm font-mono text-cyan-400 font-bold">{result.primary_verdict || "HYBRID_CORE"}</span>
               </div>
-              <ScoreBar label="" score={confidence} showPercentage={false} color="bg-gradient-to-r from-blue-500 to-cyan-400 h-2" />
-              <div className="flex items-center gap-2 mt-4">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                <p className="text-xs font-black uppercase tracking-widest text-cyan-400">{confidenceLabel(confidence)}</p>
+              {result.metadata?.model && (
+                <div className="px-5 py-3 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-md flex flex-col gap-1.5">
+                  <span className="text-[9px] uppercase tracking-[0.2em] text-white/30 font-black">Active Layer</span>
+                  <span className="text-sm font-mono text-blue-400 font-bold max-w-[200px] truncate" title={result.metadata.model}>
+                    {result.metadata.model}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            <div className="w-full lg:w-[320px] rounded-[2rem] border border-white/10 bg-black/50 p-6 space-y-4 backdrop-blur-2xl shadow-2xl relative overflow-hidden group/conf border-t-white/20">
+              <div className="flex items-center justify-between relative z-10">
+                <div className="space-y-1">
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Analysis Certainty</p>
+                  <div className="flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                    <p className="text-[11px] font-black uppercase tracking-widest text-cyan-400">{confidenceLabel(confidence)}</p>
+                  </div>
+                </div>
+                <p className="text-3xl font-black text-white font-mono tracking-tighter">{Math.round(confidence * 100)}<span className="text-sm text-white/30 ml-0.5">%</span></p>
               </div>
-              <p className="text-[10px] text-white/40 mt-3 leading-relaxed">Cross-verification of neural artifacts and heuristic metadata yields this confidence score.</p>
+              <div className="relative z-10">
+                <ScoreBar label="" score={confidence} showPercentage={false} color="bg-gradient-to-r from-blue-500 to-cyan-400 h-2" />
+              </div>
             </div>
           </div>
         </div>
@@ -614,7 +619,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             <Info className="w-4 h-4 text-blue-400" />
             <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Signal hierarchy</h3>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1">
             <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-4">
               <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400/90 font-black mb-2">Primary drivers</p>
               <div className="space-y-2">
