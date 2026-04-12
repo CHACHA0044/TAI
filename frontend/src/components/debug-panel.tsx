@@ -21,6 +21,11 @@ export function DebugPanel({ data }: DebugPanelProps) {
   const rawClassifierOutputs = (rawMeta.raw_classifier_outputs ?? {}) as Record<string, unknown>;
   const aggregationRule = String(rawMeta.aggregation_rule ?? data.triggered_rule ?? "N/A");
   const debug = (data.debug ?? {}) as Record<string, unknown>;
+  const thresholdValues = (debug.threshold_values_used ?? {}) as Record<string, unknown>;
+  const detectorConfidences = (debug.detector_confidences ?? {}) as Record<string, unknown>;
+  const sarcasmRuleHits = Array.isArray(debug.sarcasm_rule_hits) ? debug.sarcasm_rule_hits : [];
+  const biasRuleHits = Array.isArray(debug.bias_rule_hits) ? debug.bias_rule_hits : [];
+  const manipulationRuleHits = Array.isArray(debug.manipulation_rule_hits) ? debug.manipulation_rule_hits : [];
 
   return (
     <div className="mt-8">
@@ -83,6 +88,11 @@ export function DebugPanel({ data }: DebugPanelProps) {
                   {!data.category && <MetricRow label="Trust Agent Confidence" value={String(debug.trust_agent_confidence ?? "N/A")} />}
                   {!data.category && <MetricRow label="Retrieval Support Score" value={String(debug.retrieval_support_score ?? "N/A")} />}
                   {!data.category && <MetricRow label="Retrieval Contradiction Score" value={String(debug.retrieval_contradiction_score ?? "N/A")} />}
+                  {!data.category && <MetricRow label="Thresholds Exposed" value={Object.keys(thresholdValues).length} />}
+                  {!data.category && <MetricRow label="Detector Confidences" value={Object.keys(detectorConfidences).length} />}
+                  {!data.category && <MetricRow label="Sarcasm Rule Hits" value={sarcasmRuleHits.length} />}
+                  {!data.category && <MetricRow label="Bias Rule Hits" value={biasRuleHits.length} />}
+                  {!data.category && <MetricRow label="Manipulation Rule Hits" value={manipulationRuleHits.length} />}
                   {!data.category && <MetricRow label="Feature Burstiness" value={String(featureMetrics.burstiness ?? "0")} />}
                   {!data.category && <MetricRow label="Feature Sentence Variance" value={String(featureMetrics.sentence_variance ?? stylometry?.sentence_length_variance ?? 0)} />}
                   {!data.category && <MetricRow label="Feature Lexical Diversity" value={String(featureMetrics.lexical_diversity ?? stylometry?.lexical_diversity ?? 0)} />}
