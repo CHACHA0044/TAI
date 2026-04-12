@@ -778,12 +778,20 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                 <div className="space-y-2">
                   <p className="text-[10px] font-black uppercase tracking-[0.25em] text-white/35">Image forensic report</p>
                   <h3 className={`text-2xl sm:text-3xl font-black ${categoryVerdict?.color || "text-white"}`}>{categoryVerdict?.label || "Forensic verdict"}</h3>
+                  {result.confidence_band && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-white/5 border border-white/10 text-white/60">
+                      {result.confidence_band}
+                      {result.suspicion_score !== undefined && (
+                        <span className="font-mono text-cyan-400">{result.suspicion_score}%</span>
+                      )}
+                    </span>
+                  )}
                   <p className="text-sm text-white/70 leading-relaxed max-w-3xl">{result.scene_description || result.explanation}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setImageModalOpen(false)}
-                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10"
+                  className="rounded-xl border border-white/15 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white/80 hover:bg-white/10 flex-shrink-0"
                 >
                   Close
                 </button>
@@ -801,9 +809,9 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                       ))}
                     </div>
                   )}
-                  {(result.context_tags || []).length > 0 && (
+                  {(result.context_tags || []).filter(t => !t.includes("-")).length > 0 && (
                     <div className="flex flex-wrap gap-2">
-                      {(result.context_tags || []).slice(0, 8).map((tag) => (
+                      {(result.context_tags || []).slice(0, 6).map((tag) => (
                         <span key={tag} className="text-[10px] px-2 py-1 rounded-full bg-white/5 border border-white/10 text-white/65">
                           {tag}
                         </span>
@@ -819,6 +827,15 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                   <ScoreBar label="" score={imageConfidenceRatio} showPercentage={false} color="bg-cyan-500" />
                   <p className="text-[11px] text-cyan-300">{confidenceLabel(imageConfidenceRatio)}</p>
                   <p className="text-[10px] text-white/45">Source marker: {result.source && result.source !== "Unknown" ? result.source : "No explicit generator signature found"}</p>
+                  {result.generator_attribution && (
+                    <div className="mt-2 pt-2 border-t border-white/10">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Generator attribution</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-rose-400">{result.generator_attribution.name}</span>
+                        <span className="text-[10px] text-white/40 font-mono">{Math.round(result.generator_attribution.confidence * 100)}% confidence</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -843,19 +860,33 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
 
               <details className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
                 <summary className="cursor-pointer text-xs font-bold text-white/80 uppercase tracking-wider">Technical details</summary>
-                <div className="mt-3 space-y-3">
+                <div className="mt-4 space-y-4">
                   {technicalImageMetrics.length > 0 && (
                     <div>
-                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">Secondary/technical signals</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-2">Secondary / technical signals</p>
                       <ScoreCardGrid metrics={technicalImageMetrics} onOpenMetric={setActiveMetric} />
                     </div>
                   )}
-                  <div className="text-xs text-white/65 space-y-1">
-                    <p><span className="text-white/45">Engine trigger:</span> {result.triggered_rule || "N/A"}</p>
-                    <p><span className="text-white/45">Content type:</span> {result.content_type || "N/A"}</p>
-                    {result.metadata?.device_model && <p><span className="text-white/45">Device model:</span> {result.metadata.device_model}</p>}
-                    {result.metadata?.capture_timestamp && <p><span className="text-white/45">Capture timestamp:</span> {result.metadata.capture_timestamp}</p>}
-                    {result.metadata?.capture_location && <p><span className="text-white/45">Capture location:</span> {result.metadata.capture_location}</p>}
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5 text-xs text-white/65">
+                    {result.metadata?.image_width && result.metadata?.image_height && (
+                      <p><span className="text-white/40">Resolution:</span> {result.metadata.image_width} × {result.metadata.image_height}px</p>
+                    )}
+                    {result.metadata?.file_type && (
+                      <p><span className="text-white/40">File type:</span> {result.metadata.file_type}</p>
+                    )}
+                    {result.metadata?.compression_quality && (
+                      <p><span className="text-white/40">Compression:</span> {result.metadata.compression_quality}</p>
+                    )}
+                    <p><span className="text-white/40">EXIF data:</span> {result.metadata?.has_exif ? "Present" : "Not found"}</p>
+                    {result.metadata?.editing_software && (
+                      <p><span className="text-white/40">Editing software:</span> {result.metadata.editing_software}</p>
+                    )}
+                    {result.metadata?.device_model && (
+                      <p><span className="text-white/40">Camera / device:</span> {result.metadata.device_model}</p>
+                    )}
+                    {result.metadata?.capture_timestamp && (
+                      <p><span className="text-white/40">Captured:</span> {result.metadata.capture_timestamp}</p>
+                    )}
                   </div>
                 </div>
               </details>
