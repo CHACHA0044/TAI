@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Image as ImageIcon, Loader2, RefreshCcw, Camera } from "lucide-react";
 import { SectionWrapper } from "@/components/section-wrapper";
@@ -11,10 +11,47 @@ import { analyzeImage } from "@/lib/api";
 import Image from "next/image";
 
 export default function ImageDetectionPage() {
+  function buildMockImageResult(): AnalysisResult {
+    return {
+      truth_score: 0.24,
+      ai_generated_score: 0.82,
+      bias_score: 0.1,
+      credibility_score: 0.32,
+      confidence_score: 0.86,
+      confidence: 86,
+      category: "AI_GENERATED",
+      primary_verdict: "AI_GENERATED",
+      scene_description: "Portrait-style synthetic image featuring a person with studio-like lighting and smooth background gradients.",
+      detected_objects: ["person", "face", "background gradient", "textured clothing"],
+      style: "synthetic",
+      why: "The image shows strong synthetic texture and metadata anomalies with over-smooth surfaces and edge halos.",
+      explanation: "API call failed. Mock result generated locally with forensic image fields for UI continuity.",
+      authenticity_signals: {
+        ela: { score: 0.69, bucket: "HIGH", explanation: "Localized ELA spikes suggest recompression artifacts." },
+        texture_consistency: { score: 0.73, bucket: "HIGH", explanation: "Texture appears overly uniform for a camera photo." },
+        edge_artifacts: { score: 0.54, bucket: "MEDIUM", explanation: "Boundary halos observed around subject edges." },
+        metadata_anomalies: { score: 0.81, bucket: "HIGH", explanation: "Metadata lacks natural camera-origin EXIF signatures." },
+      },
+      features: {
+        perplexity: 0,
+        stylometry: { sentence_length_variance: 0, repetition_score: 0, lexical_diversity: 0 },
+      },
+      signals: [{ source: "Error Level Analysis", verified: false, confidence: 0.12 }],
+      metadata: { model: "mock-fallback", latency_ms: 0, timestamp: new Date().toISOString() },
+    };
+  }
+
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("demo") === "1") {
+      setResult(buildMockImageResult());
+    }
+  }, []);
 
   const handleFileSelect = (selectedFile: File) => {
     setFile(selectedFile);
@@ -39,20 +76,7 @@ export default function ImageDetectionPage() {
       setResult(res);
     } catch (error) {
       console.error(error);
-      setResult({
-        truth_score: 0.18,
-        ai_generated_score: 0.88,
-        bias_score: 0.1,
-        credibility_score: 0.2,
-        confidence_score: 0.94,
-        explanation: "API call failed. Mock result: High concentration of GAN artifacts detected in background elements.",
-        features: {
-          perplexity: 0,
-          stylometry: { sentence_length_variance: 0, repetition_score: 0, lexical_diversity: 0 },
-        },
-        signals: [{ source: "Error Level Analysis", verified: false, confidence: 0.12 }],
-        metadata: { model: "mock-fallback", latency_ms: 0, timestamp: new Date().toISOString() },
-      });
+      setResult(buildMockImageResult());
     } finally {
       setLoading(false);
     }
