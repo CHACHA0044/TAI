@@ -356,17 +356,13 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
     >
       <div className={`p-6 rounded-3xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-xl relative overflow-hidden group`}>
         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-          {result.category && categoryVerdict ? <categoryVerdict.icon className="w-24 h-24" /> : <VerdictIcon className="w-24 h-24" />}
+          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-24 h-24" /> : <VerdictIcon className="w-24 h-24" />; })()}
         </div>
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
           <div className="flex items-start gap-4 flex-1 min-w-0">
             <div className={`p-4 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-lg`}>
-              {result.category && categoryVerdict ? (
-                <categoryVerdict.icon className={`w-8 h-8 ${categoryVerdict.color}`} />
-              ) : (
-                <VerdictIcon className={`w-8 h-8 ${verdictStyle.color}`} />
-              )}
+              {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className={`w-8 h-8 ${categoryVerdict!.color}`} /> : <VerdictIcon className={`w-8 h-8 ${verdictStyle.color}`} />; })()}
             </div>
 
             <div className="min-w-0">
