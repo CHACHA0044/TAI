@@ -22,20 +22,20 @@ function layoutRows(metrics: MetricCardData[]): MetricCardData[][] {
 
 function getCardWidthClass(rowLength: number, totalMetrics: number) {
   if (totalMetrics <= 2) return "w-full md:w-[22rem]";
-  if (rowLength === 1) return "w-full md:w-[22rem]";
-  if (rowLength === 2) return "w-full md:w-[20rem]";
-  return "w-full md:w-[18rem]";
+  if (rowLength === 1) return "w-full md:w-[21rem]";
+  if (rowLength === 2) return "w-full md:w-[19.5rem]";
+  return "w-full md:w-[18.75rem]";
 }
 
 export function ScoreCardGrid({ metrics, onOpenMetric }: ScoreCardGridProps) {
   const rows = layoutRows(metrics);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5 sm:space-y-6">
       {rows.map((row, rowIndex) => (
-        <div key={`${rowIndex}-${row.length}`} className="flex flex-wrap md:flex-nowrap justify-center gap-4">
+        <div key={`${rowIndex}-${row.length}`} className="flex flex-wrap md:flex-nowrap justify-center items-stretch gap-4 sm:gap-5">
           {row.map((metric) => (
-            <div key={metric.key} className={getCardWidthClass(row.length, metrics.length)}>
+            <div key={metric.key} className={`${getCardWidthClass(row.length, metrics.length)} shrink-0`}>
               <MetricCard metric={metric} onOpen={onOpenMetric} />
             </div>
           ))}
