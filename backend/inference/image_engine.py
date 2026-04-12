@@ -74,16 +74,18 @@ class ImageEngine:
         if self.using_transformers:
             try:
                 logger.info(f"Loading image model: {model_name} (Half-Precision)...")
-                self.processor = AutoImageProcessor.from_pretrained(model_name)
+                # Use local_files_only=True if we pre-cached them, but let's keep it flexible
+                self.processor = AutoImageProcessor.from_pretrained(model_name, trust_remote_code=True)
                 self.model = AutoModelForImageClassification.from_pretrained(
                     model_name,
-                    torch_dtype=torch.float16,
+                    torch_dtype=torch.float16 if self.device.type == "cuda" else torch.float32,
                     low_cpu_mem_usage=True,
+                    trust_remote_code=True,
                 ).to(self.device)
                 self.model.eval()
-                logger.info("Image model loaded successfully in FP16")
+                logger.info("Image model loaded successfully")
             except Exception as e:
-                logger.error(f"Failed to load image model: {e}")
+                logger.error(f"Image model fallback: {e}. Heuristics only mode active.")
                 self.using_transformers = False
 
     def _bucket(self, score: float) -> str:

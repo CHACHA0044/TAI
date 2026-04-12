@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy everything from the backend folder to the working directory
 COPY backend .
 
+# Pre-cache models to avoid runtime 429 rate limits
+RUN python utils/cache_models.py
+
 # Make start script executable
 RUN chmod +x start.sh
 
