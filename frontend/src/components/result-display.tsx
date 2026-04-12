@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { ReactElement, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ShieldCheck,
@@ -152,11 +152,35 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
     switch (result.category) {
       case "AI_GENERATED":
         return {
-          label: "AI Generated",
+          label: "Likely AI-Generated Image",
           color: "text-rose-400",
           bg: "bg-rose-500/10",
           border: "border-rose-500/30",
           icon: ShieldAlert,
+        };
+      case "EDITED":
+        return {
+          label: "Likely Edited / Composited",
+          color: "text-amber-400",
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          icon: ShieldQuestion,
+        };
+      case "MIXED":
+        return {
+          label: "Mixed Authenticity Signals",
+          color: "text-purple-400",
+          bg: "bg-purple-500/10",
+          border: "border-purple-500/30",
+          icon: ShieldQuestion,
+        };
+      case "UNCERTAIN":
+        return {
+          label: "Uncertain / Needs Manual Review",
+          color: "text-sky-400",
+          bg: "bg-sky-500/10",
+          border: "border-sky-500/30",
+          icon: ShieldQuestion,
         };
       case "DEEPFAKE":
         return {
@@ -168,7 +192,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         };
       default:
         return {
-          label: "Organic Photo",
+          label: "Likely Real Photograph",
           color: "text-emerald-400",
           bg: "bg-emerald-500/10",
           border: "border-emerald-500/30",
@@ -345,6 +369,49 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
     confidence,
   ]);
 
+  const imageMetrics = useMemo(() => {
+    if (!result.category) return [];
+    const authenticitySignals = result.authenticity_signals || {};
+    const keyLabelMap: Record<string, { label: string; description: string; icon: ReactElement }> = {
+      ela: { label: "ELA Anomaly", description: "Localized recompression/edit signal.", icon: <Target className="w-4 h-4 text-cyan-400" /> },
+      texture_consistency: { label: "Texture Irregularity", description: "Over-smooth or repetitive local textures.", icon: <CircleDot className="w-4 h-4 text-amber-400" /> },
+      edge_artifacts: { label: "Edge Artifacts", description: "Halos, seams, or irregular edge transitions.", icon: <ShieldAlert className="w-4 h-4 text-rose-400" /> },
+      lighting_consistency: { label: "Lighting Inconsistency", description: "Illumination direction mismatch across regions.", icon: <Globe className="w-4 h-4 text-purple-400" /> },
+      shadow_mismatch: { label: "Shadow Mismatch", description: "Shadows/luminance do not align naturally.", icon: <ShieldQuestion className="w-4 h-4 text-purple-400" /> },
+      noise_pattern_mismatch: { label: "Noise Pattern Mismatch", description: "Sensor noise looks inconsistent.", icon: <Info className="w-4 h-4 text-sky-400" /> },
+      compression_anomalies: { label: "Compression Anomaly", description: "Compression profile differs from natural capture.", icon: <ShieldAlert className="w-4 h-4 text-rose-400" /> },
+      face_hand_inconsistency: { label: "Face/Hand Anomaly", description: "Potential facial/limb structure artifact.", icon: <ShieldAlert className="w-4 h-4 text-amber-400" /> },
+      object_realism: { label: "Object Realism Risk", description: "Potentially implausible object details.", icon: <Scale className="w-4 h-4 text-amber-400" /> },
+      metadata_anomalies: { label: "Metadata Anomaly", description: "EXIF/source metadata is missing or suspicious.", icon: <FileText className="w-4 h-4 text-cyan-400" /> },
+    };
+
+    return Object.entries(authenticitySignals)
+      .map(([key, value]) => {
+        const score = toRatio(value?.score);
+        const mapped = keyLabelMap[key] || {
+          label: key.replace(/_/g, " ").replace(/\b\w/g, (match) => match.toUpperCase()),
+          description: "Forensic authenticity signal.",
+          icon: <Info className="w-4 h-4 text-white/70" />,
+        };
+        return {
+          key: key as MetricKey,
+          label: mapped.label,
+          description: mapped.description,
+          score,
+          invertColor: true,
+          icon: mapped.icon,
+          relevance: score,
+          meaning: mapped.description,
+          whyAssigned: value?.explanation || "Signal contributed to authenticity assessment.",
+          indicators: [value?.bucket ? `Severity bucket: ${value.bucket}` : "", `Signal score: ${Math.round(score * 100)}%`].filter(Boolean),
+          interpretation: "Higher values indicate stronger forensic concern for this specific signal.",
+          confidenceContext: confidenceNarrative(confidence),
+        } as MetricCardData;
+      })
+      .filter((metric) => metric.score >= METRIC_VISIBILITY_THRESHOLD || metric.score >= 0.5)
+      .sort((a, b) => b.relevance - a.relevance);
+  }, [result.category, result.authenticity_signals, confidence]);
+
   const primarySignals = metrics.slice(0, 3);
   const secondarySignals = metrics.slice(3);
 
@@ -372,15 +439,13 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
               </h2>
               <p className="text-sm text-white/70 mt-2 max-w-2xl">
                 {result.category
-                  ? "Layered forensic checks were applied across metadata and model signals."
+                  ? (result.why || result.scene_description || "Layered forensic checks were applied across metadata and model signals.")
                   : composedVerdict.explanation}
               </p>
-              {!result.category && (
-                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-black/20 text-[11px] text-white/70">
-                  <span className="uppercase tracking-wider text-white/45">Engine verdict</span>
-                  <span className="font-mono">{result.primary_verdict || "N/A"}</span>
-                </div>
-              )}
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-black/20 text-[11px] text-white/70">
+                <span className="uppercase tracking-wider text-white/45">Engine verdict</span>
+                <span className="font-mono">{result.primary_verdict || "N/A"}</span>
+              </div>
             </div>
           </div>
 
@@ -426,33 +491,55 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       )}
 
       {result.category && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="glass rounded-2xl border border-white/10 p-5 group hover:border-white/20 transition-all">
-            <div className="flex items-center justify-between mb-4">
-              <div className="p-2 rounded-lg bg-white/5">
-                <Globe className="w-4 h-4 text-emerald-400" />
+        <div className="glass rounded-3xl border border-white/10 p-6 space-y-6">
+          <div className="grid gap-5 lg:grid-cols-[1.2fr_1fr]">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-5 space-y-3">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-black">Scene description</p>
+              <p className="text-white/85 text-sm leading-relaxed">{result.scene_description || result.explanation}</p>
+              {result.detected_objects && result.detected_objects.length > 0 && (
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {result.detected_objects.slice(0, 8).map((objectName) => (
+                    <span key={objectName} className="text-[10px] px-2.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300">
+                      {objectName}
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="text-[11px] text-white/55">
+                Style: <span className="text-white/80 font-semibold">{result.style || "unknown"}</span>
               </div>
-              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${result.source && result.source !== "Unknown" ? "bg-rose-500/20 text-rose-400" : "bg-white/5 text-white/30"}`}>
-                {result.source && result.source !== "Unknown" ? "IDENTIFIED" : "UNKNOWN"}
-              </span>
             </div>
-            <p className="text-xs font-bold text-white/80 mb-1">Origin / Source</p>
-            <p className="text-lg font-black text-white/90 truncate">{result.source && result.source !== "Unknown" ? result.source : "No match found"}</p>
-            <p className="text-[10px] text-white/30 leading-tight mt-1">
-              {result.source && result.source !== "Unknown"
-                ? "Source identified via filename markers or embedded metadata."
-                : "No known AI generator signature found in file metadata."}
-            </p>
+            <div className="rounded-2xl bg-black/20 border border-white/10 p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
+                <p className="text-2xl font-black text-white font-mono">{Math.round((result.confidence ?? result.confidence_score * 100))}%</p>
+              </div>
+              <ScoreBar label="" score={toRatio(result.confidence ?? result.confidence_score)} showPercentage={false} color="bg-cyan-500" />
+              <p className="text-[11px] text-cyan-300">{confidenceLabel(toRatio(result.confidence ?? result.confidence_score))}</p>
+              <div className="text-[10px] text-white/45">Primary source marker: {result.source && result.source !== "Unknown" ? result.source : "No explicit generator signature found"}</div>
+            </div>
           </div>
 
-          <div className="md:col-span-1 lg:col-span-2 glass rounded-2xl border border-white/10 p-5">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-xs font-bold text-white/80">Pixel Integrity (ELA)</p>
-              <p className="text-xl font-black font-mono text-white">{Math.round(result.credibility_score * 100)}%</p>
+          {imageMetrics.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Key forensic signals</h3>
+                <p className="text-[11px] text-white/45">Showing strongest indicators only</p>
+              </div>
+              <ScoreCardGrid metrics={imageMetrics} onOpenMetric={setActiveMetric} />
             </div>
-            <ScoreBar label="" score={result.credibility_score} showPercentage={false} />
-            <p className="text-[10px] text-white/30 leading-tight mt-3">How consistent compression noise appears across the media frame.</p>
-          </div>
+          )}
+
+          <details className="rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+            <summary className="cursor-pointer text-xs font-bold text-white/80 uppercase tracking-wider">
+              Technical details
+            </summary>
+            <div className="mt-3 text-xs text-white/70 space-y-2">
+              {result.if_uncertain && <p><span className="text-white/45">Uncertainty note:</span> {result.if_uncertain}</p>}
+              <p><span className="text-white/45">Why this result:</span> {result.why || result.explanation}</p>
+              <p><span className="text-white/45">Engine trigger:</span> {result.triggered_rule || "N/A"}</p>
+            </div>
+          </details>
         </div>
       )}
 
@@ -497,27 +584,17 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
             <Info className="w-4 h-4 text-blue-400" />
-            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Forensic Verdict Summary</h3>
-            <span className="ml-auto text-[10px] text-white/30">{result.signals.length} layers checked</span>
+            <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Signal checks</h3>
           </div>
           <div className="grid gap-2">
-            {result.signals.map((signal, i) => {
-              const pct = Math.round(signal.confidence * 100);
-              return (
-                <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${signal.verified ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}`}>
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${signal.verified ? "bg-emerald-500" : "bg-rose-500"}`} />
-                  <span className="text-xs font-semibold text-white/80 flex-1">{signal.source}</span>
-                  <span className="text-[10px] font-mono text-white/40">{pct}%</span>
-                  <span className={`text-[10px] font-black uppercase tracking-wide ${signal.verified ? "text-emerald-400" : "text-rose-400"}`}>
-                    {signal.verified ? "PASS" : "FAIL"}
-                  </span>
-                </div>
-              );
-            })}
+            {result.signals.map((signal, i) => (
+              <div key={i} className={`flex items-center gap-3 p-3 rounded-xl border ${signal.verified ? "bg-emerald-500/5 border-emerald-500/20" : "bg-rose-500/5 border-rose-500/20"}`}>
+                <div className={`w-2 h-2 rounded-full flex-shrink-0 ${signal.verified ? "bg-emerald-500" : "bg-rose-500"}`} />
+                <span className="text-xs font-semibold text-white/80 flex-1">{signal.source}</span>
+                <span className="text-[10px] font-mono text-white/40">{Math.round(signal.confidence * 100)}%</span>
+              </div>
+            ))}
           </div>
-          <p className="text-[10px] text-white/25 mt-3">
-            Each layer is an independent forensic check. 2 or more FAILs = high confidence of manipulation or synthesis.
-          </p>
         </div>
       )}
 
@@ -630,7 +707,7 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       )}
 
-      {!result.category && <MetricModal metric={activeMetric} isOpen={!!activeMetric} onClose={() => setActiveMetric(null)} />}
+      <MetricModal metric={activeMetric} isOpen={!!activeMetric} onClose={() => setActiveMetric(null)} />
 
       <DebugPanel data={result} />
     </motion.div>

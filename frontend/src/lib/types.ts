@@ -55,8 +55,14 @@ export interface AnalysisResult {
     tags: string[];
   };
   explanation: string;
-  category?: "REAL" | "AI_GENERATED" | "DEEPFAKE";
+  category?: "REAL" | "AI_GENERATED" | "DEEPFAKE" | "EDITED" | "MIXED" | "UNCERTAIN";
   source?: string;
+  scene_description?: string;
+  detected_objects?: string[];
+  style?: string;
+  authenticity_signals?: Record<string, { score: number; bucket: "LOW" | "MEDIUM" | "HIGH"; explanation?: string }>;
+  why?: string;
+  if_uncertain?: string | null;
   metadata: {
     model: string;
     latency_ms: number;
@@ -80,7 +86,12 @@ export type PrimaryVerdict =
   | "SATIRE_OR_SARCASM"
   | "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"
   | "LIKELY_AI_GENERATED"
-  | "MIXED_ANALYSIS";
+  | "MIXED_ANALYSIS"
+  | "REAL"
+  | "AI_GENERATED"
+  | "EDITED"
+  | "MIXED"
+  | "UNCERTAIN";
 
 export interface Dimensions {
   truth_score: number;

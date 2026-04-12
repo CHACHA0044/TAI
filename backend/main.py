@@ -162,6 +162,11 @@ class PrimaryVerdict(str, Enum):
     CONSPIRACY_OR_EXTRAORDINARY_CLAIM = "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"
     LIKELY_AI_GENERATED = "LIKELY_AI_GENERATED"
     MIXED_ANALYSIS = "MIXED_ANALYSIS"
+    REAL = "REAL"
+    AI_GENERATED = "AI_GENERATED"
+    EDITED = "EDITED"
+    MIXED = "MIXED"
+    UNCERTAIN = "UNCERTAIN"
 
 
 class DimensionsInfo(BaseModel):
@@ -217,6 +222,12 @@ class AnalysisResponse(BaseModel):
     audio_score: Optional[float] = None
     news_consistency_score: Optional[float] = None
     ocr_text: Optional[str] = None
+    scene_description: Optional[str] = None
+    detected_objects: Optional[List[str]] = None
+    style: Optional[str] = None
+    authenticity_signals: Optional[dict] = None
+    why: Optional[str] = None
+    if_uncertain: Optional[str] = None
     # Rich analysis fields
     primary_verdict: PrimaryVerdict = PrimaryVerdict.MIXED_ANALYSIS
     triggered_rule: Optional[str] = None

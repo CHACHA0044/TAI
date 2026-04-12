@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 
-export type MetricKey = "truth" | "verifiability" | "ai" | "bias" | "manipulation" | "opinion" | "sarcasm";
+export type MetricKey = "truth" | "verifiability" | "ai" | "bias" | "manipulation" | "opinion" | "sarcasm" | string;
 
 export interface MetricCardData {
   key: MetricKey;
