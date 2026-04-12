@@ -12,61 +12,341 @@ import {
   BrainCircuit,
   Scale,
   Globe,
-  Cpu,
   Mic,
   Newspaper,
   FileText,
+  CircleDot,
 } from "lucide-react";
 import { AnalysisResult } from "@/lib/types";
 import { ScoreBar } from "./score-bar";
 import { DebugPanel } from "./debug-panel";
+import { composeVerdict } from "@/lib/verdict-composer";
+import { MetricCardData, MetricKey } from "./result/metric-types";
+import { ScoreCardGrid } from "./result/score-card-grid";
+import { MetricModal } from "./result/metric-modal";
 
-const MAX_DISPLAYED_RAW_SIGNALS = 8;
+const METRIC_VISIBILITY_THRESHOLD = 0.18;
 
 interface ResultDisplayProps {
   result: AnalysisResult;
 }
 
+const toneStyles = {
+  emerald: {
+    color: "text-emerald-400",
+    bg: "bg-emerald-500/10",
+    border: "border-emerald-500/30",
+    icon: ShieldCheck,
+  },
+  amber: {
+    color: "text-amber-400",
+    bg: "bg-amber-500/10",
+    border: "border-amber-500/30",
+    icon: ShieldQuestion,
+  },
+  rose: {
+    color: "text-rose-400",
+    bg: "bg-rose-500/10",
+    border: "border-rose-500/30",
+    icon: ShieldAlert,
+  },
+  sky: {
+    color: "text-sky-400",
+    bg: "bg-sky-500/10",
+    border: "border-sky-500/30",
+    icon: ShieldQuestion,
+  },
+  purple: {
+    color: "text-purple-400",
+    bg: "bg-purple-500/10",
+    border: "border-purple-500/30",
+    icon: ShieldQuestion,
+  },
+  fuchsia: {
+    color: "text-fuchsia-400",
+    bg: "bg-fuchsia-500/10",
+    border: "border-fuchsia-500/30",
+    icon: BrainCircuit,
+  },
+  slate: {
+    color: "text-white",
+    bg: "bg-white/5",
+    border: "border-white/20",
+    icon: CircleDot,
+  },
+} as const;
+
+function toRatio(value: number | undefined, fallback = 0): number {
+  const numeric = Number.isFinite(value) ? Number(value) : fallback;
+  if (numeric > 1) return Math.max(0, Math.min(1, numeric / 100));
+  return Math.max(0, Math.min(1, numeric));
+}
+
+function confidenceLabel(confidence: number) {
+  if (confidence >= 0.78) return "High clarity";
+  if (confidence >= 0.52) return "Moderate clarity";
+  return "Low clarity";
+}
+
+function confidenceNarrative(confidence: number) {
+  if (confidence >= 0.78) return "Signals are consistent across detectors and evidence checks.";
+  if (confidence >= 0.52) return "Some signals align, but there are meaningful competing indicators.";
+  return "Evidence and detectors conflict, so interpretation should remain cautious.";
+}
+
+function metricBoostByVerdict(verdict: AnalysisResult["primary_verdict"]): Partial<Record<MetricKey, number>> {
+  switch (verdict) {
+    case "VERIFIED_FACT":
+    case "FALSE_FACT":
+    case "UNVERIFIED_CLAIM":
+      return { truth: 0.6, verifiability: 0.5 };
+    case "BIASED_CONTENT":
+      return { bias: 0.65, truth: 0.2, verifiability: 0.2 };
+    case "MANIPULATIVE_CONTENT":
+      return { manipulation: 0.65, bias: 0.2 };
+    case "OPINION":
+      return { opinion: 0.65, truth: 0.2 };
+    case "SATIRE_OR_SARCASM":
+      return { sarcasm: 0.65, opinion: 0.2 };
+    case "LIKELY_AI_GENERATED":
+      return { ai: 0.65 };
+    default:
+      return {};
+  }
+}
+
 export function ResultDisplay({ result }: ResultDisplayProps) {
-  const [activeMetric, setActiveMetric] = useState<"truth" | "verifiability" | "ai" | "bias" | "manipulation" | "opinion" | "sarcasm" | null>(null);
+  const [activeMetric, setActiveMetric] = useState<MetricCardData | null>(null);
 
-  const verdictMap = useMemo(() => ({
-    VERIFIED_FACT: { label: "Verified Fact", color: "text-emerald-400", icon: ShieldCheck, bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
-    FALSE_FACT: { label: "False Claim Detected", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" },
-    UNVERIFIED_CLAIM: { label: "Unverified Claim", color: "text-amber-400", icon: ShieldQuestion, bg: "bg-amber-500/10", border: "border-amber-500/30" },
-    OPINION: { label: "Opinion / Subjective Statement", color: "text-sky-400", icon: ShieldQuestion, bg: "bg-sky-500/10", border: "border-sky-500/30" },
-    BIASED_CONTENT: { label: "Biased or Slanted Content", color: "text-amber-400", icon: ShieldAlert, bg: "bg-amber-500/10", border: "border-amber-500/30" },
-    MANIPULATIVE_CONTENT: { label: "Manipulative Language Detected", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" },
-    SATIRE_OR_SARCASM: { label: "Satirical / Sarcastic Content", color: "text-purple-400", icon: ShieldQuestion, bg: "bg-purple-500/10", border: "border-purple-500/30" },
-    CONSPIRACY_OR_EXTRAORDINARY_CLAIM: { label: "Unsupported Extraordinary Claim", color: "text-orange-400", icon: ShieldAlert, bg: "bg-orange-500/10", border: "border-orange-500/30" },
-    LIKELY_AI_GENERATED: { label: "Likely AI-Generated Text", color: "text-fuchsia-400", icon: ShieldAlert, bg: "bg-fuchsia-500/10", border: "border-fuchsia-500/30" },
-    MIXED_ANALYSIS: { label: "Mixed Analysis", color: "text-white", icon: ShieldQuestion, bg: "bg-white/5", border: "border-white/20" },
-  }), []);
+  const truth = result.dimensions ? toRatio(result.dimensions.truth_score) : toRatio(result.truth_score);
+  const verifiability = result.dimensions?.verifiability !== undefined ? toRatio(result.dimensions.verifiability) : 0.5;
+  const aiLikelihood = result.dimensions ? toRatio(result.dimensions.ai_likelihood) : toRatio(result.ai_generated_score);
+  const bias = result.dimensions ? toRatio(result.dimensions.bias_score) : toRatio(result.bias_score);
+  const manipulation = toRatio(result.dimensions?.manipulation_score);
+  const opinion = toRatio(result.dimensions?.opinion_score);
+  const sarcasm = toRatio(result.dimensions?.sarcasm_score);
+  const confidence = toRatio(result.confidence ?? result.confidence_score);
 
-  // Determine verdict based on taxonomy or fallback score logic
-  const getVerdict = () => {
-    if (result.primary_verdict && verdictMap[result.primary_verdict]) {
-      return verdictMap[result.primary_verdict];
+  const composedVerdict = useMemo(
+    () =>
+      composeVerdict({
+        primaryVerdict: result.primary_verdict,
+        truth,
+        verifiability,
+        aiLikelihood,
+        bias,
+        manipulation,
+        opinion,
+        sarcasm,
+        confidence,
+      }),
+    [result.primary_verdict, truth, verifiability, aiLikelihood, bias, manipulation, opinion, sarcasm, confidence],
+  );
+
+  const verdictStyle = toneStyles[composedVerdict.tone];
+  const VerdictIcon = verdictStyle.icon;
+
+  const categoryVerdict = useMemo(() => {
+    if (!result.category) return null;
+
+    switch (result.category) {
+      case "AI_GENERATED":
+        return {
+          label: "AI Generated",
+          color: "text-rose-400",
+          bg: "bg-rose-500/10",
+          border: "border-rose-500/30",
+          icon: ShieldAlert,
+        };
+      case "DEEPFAKE":
+        return {
+          label: "Deepfake Found",
+          color: "text-amber-400",
+          bg: "bg-amber-500/10",
+          border: "border-amber-500/30",
+          icon: ShieldQuestion,
+        };
+      default:
+        return {
+          label: "Organic Photo",
+          color: "text-emerald-400",
+          bg: "bg-emerald-500/10",
+          border: "border-emerald-500/30",
+          icon: ShieldCheck,
+        };
     }
-    // If we have a specific category, use that first for clearer results
-    if (result.category) {
-      switch (result.category) {
-        case "AI_GENERATED":
-          return { label: "AI Generated", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" };
-        case "DEEPFAKE":
-          return { label: "Deepfake Found", color: "text-amber-400", icon: ShieldQuestion, bg: "bg-amber-500/10", border: "border-amber-500/30" };
-        case "REAL":
-          return { label: "Organic Photo", color: "text-emerald-400", icon: ShieldCheck, bg: "bg-emerald-500/10", border: "border-emerald-500/30" };
-      }
+  }, [result.category]);
+
+  const metrics = useMemo(() => {
+    const expanded = result.expanded_analysis;
+    const debug = result.debug;
+    const verdictBoost = metricBoostByVerdict(result.primary_verdict);
+
+    const baseMetrics: MetricCardData[] = [
+      {
+        key: "truth",
+        label: "Truth Score",
+        description: "Factual alignment with verifiable evidence.",
+        score: truth,
+        icon: <Target className="w-4 h-4 text-emerald-400" />,
+        relevance: 1.8 + truth + (verdictBoost.truth ?? 0),
+        meaning: "Truth score estimates how well core claims align with known facts and evidence.",
+        whyAssigned: expanded?.truth_score?.explanation || "Model and retrieval signals were combined to estimate factual correctness.",
+        indicators: result.signals?.map((signal) => `${signal.source}: ${Math.round(signal.confidence * 100)}% confidence`) || [],
+        interpretation: "Higher values suggest stronger factual grounding. Lower values indicate contradiction or weak support.",
+        confidenceContext: confidenceNarrative(confidence),
+        evidence: expanded?.truth_score?.evidence,
+        sources: expanded?.truth_score?.sources,
+      },
+      {
+        key: "verifiability",
+        label: "Verifiability",
+        description: "How testable and sourceable the claim is right now.",
+        score: verifiability,
+        icon: <Info className="w-4 h-4 text-cyan-400" />,
+        relevance: 1.7 + verifiability + (verdictBoost.verifiability ?? 0),
+        meaning: "Verifiability measures whether enough concrete evidence exists to confidently confirm or refute the claim.",
+        whyAssigned: expanded?.verifiability?.explanation || "The engine evaluated whether the claim can be checked against reliable, current sources.",
+        indicators: expanded?.verifiability?.indicators || [],
+        interpretation: "High values mean the claim is checkable. Low values often indicate missing, ambiguous, or non-testable evidence.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+      {
+        key: "bias",
+        label: "Bias Level",
+        description: "Loaded framing, ideological slant, or one-sided rhetoric.",
+        score: bias,
+        invertColor: true,
+        icon: <Scale className="w-4 h-4 text-amber-400" />,
+        relevance: bias + 0.4 + (verdictBoost.bias ?? 0),
+        meaning: "Bias score reflects the intensity of slanted framing and emotionally loaded language.",
+        whyAssigned: expanded?.bias_score?.explanation || "The model detected signs of framing that may steer interpretation.",
+        indicators: [...(expanded?.bias_score?.indicators || []), ...(debug?.bias_rule_hits || [])],
+        interpretation: "Higher bias does not automatically make a claim false, but it can reduce neutrality and trustworthiness.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+      {
+        key: "manipulation",
+        label: "Manipulation Score",
+        description: "Action pressure, coercion, fear, or urgency cues.",
+        score: manipulation,
+        invertColor: true,
+        icon: <ShieldAlert className="w-4 h-4 text-rose-400" />,
+        relevance: manipulation + 0.4 + (verdictBoost.manipulation ?? 0),
+        meaning: "Manipulation score indicates persuasive pressure intended to push behavior rather than inform.",
+        whyAssigned: expanded?.manipulation_score?.explanation || "The engine found language patterns tied to urgency, coercion, or emotional pressure.",
+        indicators: [...(expanded?.manipulation_score?.indicators || []), ...(debug?.manipulation_rule_hits || [])],
+        interpretation: "Higher values indicate stronger pressure tactics. It is an influence signal, separate from factuality.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+      {
+        key: "opinion",
+        label: "Opinion Score",
+        description: "Subjective judgment and preference-oriented language.",
+        score: opinion,
+        invertColor: true,
+        icon: <ShieldQuestion className="w-4 h-4 text-sky-400" />,
+        relevance: opinion + 0.35 + (verdictBoost.opinion ?? 0),
+        meaning: "Opinion score estimates how much of the text reflects personal judgment rather than objective claims.",
+        whyAssigned: expanded?.opinion_score?.explanation || "The classifier detected comparative or subjective wording patterns.",
+        indicators: expanded?.opinion_score?.indicators || [],
+        interpretation: "High opinion scores suggest value statements that should not be read as strict factual assertions.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+      {
+        key: "sarcasm",
+        label: "Sarcasm Score",
+        description: "Satirical or ironic framing that can invert literal meaning.",
+        score: sarcasm,
+        invertColor: true,
+        icon: <ShieldQuestion className="w-4 h-4 text-purple-400" />,
+        relevance: sarcasm + 0.35 + (verdictBoost.sarcasm ?? 0),
+        meaning: "Sarcasm score detects rhetorical irony that can make literal fact-check interpretations unreliable.",
+        whyAssigned: result.dimensions?.sarcasm
+          ? "Sarcasm cues were detected in sentence framing and wording patterns."
+          : "No strong sarcasm cues were dominant in the current text.",
+        indicators: result.debug?.sarcasm_rule_hits || [],
+        interpretation: "Higher sarcasm means literal reading may be misleading; context and intent matter more.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+      {
+        key: "ai",
+        label: "AI Likelihood",
+        description: "Style signal for machine-generated writing patterns.",
+        score: aiLikelihood,
+        invertColor: true,
+        icon: <BrainCircuit className="w-4 h-4 text-fuchsia-400" />,
+        relevance: aiLikelihood + 0.2 + (verdictBoost.ai ?? 0),
+        meaning: "AI likelihood estimates whether writing style resembles machine-generated language patterns.",
+        whyAssigned: expanded?.ai_likelihood?.explanation || "Stylometric and classifier signals were combined to estimate synthetic writing probability.",
+        indicators: expanded?.ai_likelihood?.indicators || [],
+        interpretation: "Use this as provenance context. It should not be treated as direct evidence of factual truth or falsehood.",
+        confidenceContext: confidenceNarrative(confidence),
+      },
+    ];
+
+    const anchors: MetricKey[] = ["truth", "verifiability"];
+    const critical = new Set<MetricKey>(anchors);
+
+    switch (result.primary_verdict) {
+      case "BIASED_CONTENT":
+        critical.add("bias");
+        break;
+      case "MANIPULATIVE_CONTENT":
+        critical.add("manipulation");
+        break;
+      case "OPINION":
+        critical.add("opinion");
+        break;
+      case "SATIRE_OR_SARCASM":
+        critical.add("sarcasm");
+        break;
+      case "LIKELY_AI_GENERATED":
+        critical.add("ai");
+        break;
     }
 
-    if (result.truth_score > 0.7) return { label: "Authentic", color: "text-emerald-400", icon: ShieldCheck, bg: "bg-emerald-500/10", border: "border-emerald-500/30" };
-    if (result.truth_score > 0.4) return { label: "Unverified", color: "text-amber-400", icon: ShieldQuestion, bg: "bg-amber-500/10", border: "border-amber-500/30" };
-    return { label: "Evidence of Fake", color: "text-rose-400", icon: ShieldAlert, bg: "bg-rose-500/10", border: "border-rose-500/30" };
-  };
+    const visible = baseMetrics.filter((metric) => critical.has(metric.key) || metric.score >= METRIC_VISIBILITY_THRESHOLD);
 
-  const verdict = getVerdict();
-  const Icon = verdict.icon;
+    const anchorOrder: Record<MetricKey, number> = {
+      truth: 0,
+      verifiability: 1,
+      bias: 2,
+      manipulation: 3,
+      opinion: 4,
+      sarcasm: 5,
+      ai: 6,
+    };
+
+    return visible.sort((a, b) => {
+      const aAnchor = anchors.includes(a.key);
+      const bAnchor = anchors.includes(b.key);
+
+      if (aAnchor && bAnchor) return anchorOrder[a.key] - anchorOrder[b.key];
+      if (aAnchor) return -1;
+      if (bAnchor) return 1;
+
+      if (b.relevance !== a.relevance) return b.relevance - a.relevance;
+      return b.score - a.score;
+    });
+  }, [
+    result.expanded_analysis,
+    result.debug,
+    result.signals,
+    result.primary_verdict,
+    result.dimensions?.sarcasm,
+    truth,
+    verifiability,
+    bias,
+    manipulation,
+    opinion,
+    sarcasm,
+    aiLikelihood,
+    confidence,
+  ]);
+
+  const primarySignals = metrics.slice(0, 3);
+  const secondarySignals = metrics.slice(3);
 
   return (
     <motion.div
@@ -74,28 +354,48 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
       animate={{ opacity: 1, scale: 1 }}
       className="space-y-6"
     >
-      {/* Top Verdict Card */}
-      <div className={`p-6 rounded-3xl ${verdict.bg} border ${verdict.border} backdrop-blur-xl relative overflow-hidden group`}>
+      <div className={`p-6 rounded-3xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} backdrop-blur-xl relative overflow-hidden group`}>
         <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:opacity-10 transition-opacity">
-          <Icon className="w-24 h-24" />
+          {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className="w-24 h-24" /> : <VerdictIcon className="w-24 h-24" />; })()}
         </div>
-        
-        <div className="relative z-10 flex items-center gap-5">
-          <div className={`p-4 rounded-2xl ${verdict.bg} border ${verdict.border} shadow-lg`}>
-            <Icon className={`w-8 h-8 ${verdict.color}`} />
+
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-start gap-6">
+          <div className="flex items-start gap-4 flex-1 min-w-0">
+            <div className={`p-4 rounded-2xl ${result.category ? categoryVerdict?.bg : verdictStyle.bg} border ${result.category ? categoryVerdict?.border : verdictStyle.border} shadow-lg`}>
+              {(() => { const CvIcon = categoryVerdict?.icon; return result.category && CvIcon ? <CvIcon className={`w-8 h-8 ${categoryVerdict!.color}`} /> : <VerdictIcon className={`w-8 h-8 ${verdictStyle.color}`} />; })()}
+            </div>
+
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Forensic verdict summary</p>
+              <h2 className={`text-3xl font-black tracking-tight ${result.category && categoryVerdict ? categoryVerdict.color : verdictStyle.color}`}>
+                {result.category && categoryVerdict ? categoryVerdict.label : composedVerdict.label}
+              </h2>
+              <p className="text-sm text-white/70 mt-2 max-w-2xl">
+                {result.category
+                  ? "Layered forensic checks were applied across metadata and model signals."
+                  : composedVerdict.explanation}
+              </p>
+              {!result.category && (
+                <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/15 bg-black/20 text-[11px] text-white/70">
+                  <span className="uppercase tracking-wider text-white/45">Engine verdict</span>
+                  <span className="font-mono">{result.primary_verdict || "N/A"}</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Final Engine Verdict</p>
-            <h2 className={`text-3xl font-black ${verdict.color} tracking-tight`}>{verdict.label}</h2>
-          </div>
-          <div className="ml-auto text-right">
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 mb-1">Confidence</p>
-            <p className="text-xl font-mono font-bold text-white">{Math.round(result.confidence_score * 100)}%</p>
+
+          <div className="lg:w-[260px] rounded-2xl border border-white/10 bg-black/20 p-4 space-y-3">
+            <div className="flex items-baseline justify-between">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40">Confidence</p>
+              <p className="text-2xl font-black text-white font-mono">{Math.round(confidence * 100)}%</p>
+            </div>
+            <ScoreBar label="" score={confidence} showPercentage={false} color="bg-cyan-500" />
+            <p className="text-[11px] font-bold text-cyan-300">{confidenceLabel(confidence)}</p>
+            <p className="text-[10px] text-white/45">Confidence reflects analysis clarity and signal consistency, not absolute truth.</p>
           </div>
         </div>
       </div>
 
-      {/* Source URL banner — shown when result originated from URL extraction */}
       {result.source && (result.source.startsWith("http://") || result.source.startsWith("https://")) && (
         <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs font-bold">
           <Globe className="w-4 h-4 flex-shrink-0" />
@@ -113,9 +413,20 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         </div>
       )}
 
-      {/* Core Score Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {result.category ? (
+      {!result.category && (
+        <div className="glass rounded-3xl border border-white/10 p-5 sm:p-6 space-y-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Signal cards</h3>
+              <p className="text-xs text-white/45">Showing {metrics.length} of 7 metrics based on relevance and transparency rules.</p>
+            </div>
+          </div>
+          <ScoreCardGrid metrics={metrics} onOpenMetric={setActiveMetric} />
+        </div>
+      )}
+
+      {result.category && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <div className="glass rounded-2xl border border-white/10 p-5 group hover:border-white/20 transition-all">
             <div className="flex items-center justify-between mb-4">
               <div className="p-2 rounded-lg bg-white/5">
@@ -133,102 +444,55 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                 : "No known AI generator signature found in file metadata."}
             </p>
           </div>
-        ) : (
-          <>
-            <ScoreCard 
-              label="Truth Score" 
-              score={result.dimensions ? result.dimensions.truth_score / 100 : result.truth_score} 
-              icon={<Target className="w-4 h-4 text-emerald-400" />}
-              description="Factual accuracy vs. verified sources."
-              onClick={() => setActiveMetric(activeMetric === "truth" ? null : "truth")}
-              clickable
-            />
-            <ScoreCard
-              label="Verifiability"
-              score={result.dimensions?.verifiability !== undefined ? result.dimensions.verifiability / 100 : 0.5}
-              icon={<Info className="w-4 h-4 text-cyan-400" />}
-              description="Whether this claim is sourceable and testable now."
-              onClick={() => setActiveMetric(activeMetric === "verifiability" ? null : "verifiability")}
-              clickable
-            />
-          </>
-        )}
-        
-        {!result.category && (
-          <ScoreCard 
-            label="AI Likelihood"
-            score={result.dimensions ? result.dimensions.ai_likelihood / 100 : result.ai_generated_score} 
-            icon={<BrainCircuit className="w-4 h-4 text-rose-400" />}
-            description="Likelihood content was machine-generated."
-            invertColor
-            onClick={() => setActiveMetric(activeMetric === "ai" ? null : "ai")}
-            clickable
-          />
-        )}
 
-        {!result.category && (
-          <ScoreCard 
-            label="Bias Level" 
-            score={result.dimensions ? result.dimensions.bias_score / 100 : result.bias_score} 
-            icon={<Scale className="w-4 h-4 text-amber-400" />}
-            description="Detected slant, propaganda, or loaded framing."
-            invertColor
-            onClick={() => setActiveMetric(activeMetric === "bias" ? null : "bias")}
-            clickable
-          />
-        )}
-
-        {!result.category && (
-          <ScoreCard
-            label="Manipulation Score"
-            score={(result.dimensions?.manipulation_score ?? 0) / 100}
-            icon={<ShieldAlert className="w-4 h-4 text-rose-400" />}
-            description="Emotional pressure, coercion, fear, or sales urgency."
-            invertColor
-            onClick={() => setActiveMetric(activeMetric === "manipulation" ? null : "manipulation")}
-            clickable
-          />
-        )}
-
-        {!result.category && (
-          <ScoreCard
-            label="Opinion Score"
-            score={(result.dimensions?.opinion_score ?? 0) / 100}
-            icon={<ShieldQuestion className="w-4 h-4 text-sky-400" />}
-            description="Subjective preference/judgment signals detected."
-            invertColor
-            onClick={() => setActiveMetric(activeMetric === "opinion" ? null : "opinion")}
-            clickable
-          />
-        )}
-
-        {!result.category && (
-          <ScoreCard
-            label="Sarcasm Score"
-            score={(result.dimensions?.sarcasm_score ?? 0) / 100}
-            icon={<ShieldQuestion className="w-4 h-4 text-purple-400" />}
-            description="Satirical or sarcastic markers in wording."
-            invertColor
-            onClick={() => setActiveMetric(activeMetric === "sarcasm" ? null : "sarcasm")}
-            clickable
-          />
-        )}
-
-        {result.category && (
-          <ScoreCard 
-            label="Pixel Integrity (ELA)" 
-            score={result.credibility_score} 
-            icon={<Cpu className="w-4 h-4 text-amber-400" />}
-            description="How consistent the compression noise is. Low = edited or synthetic."
-          />
-        )}
-      </div>
-
-      {!result.category && (
-        <ExpandedMetricPanel metric={activeMetric} result={result} />
+          <div className="md:col-span-1 lg:col-span-2 glass rounded-2xl border border-white/10 p-5">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-xs font-bold text-white/80">Pixel Integrity (ELA)</p>
+              <p className="text-xl font-black font-mono text-white">{Math.round(result.credibility_score * 100)}%</p>
+            </div>
+            <ScoreBar label="" score={result.credibility_score} showPercentage={false} />
+            <p className="text-[10px] text-white/30 leading-tight mt-3">How consistent compression noise appears across the media frame.</p>
+          </div>
+        </div>
       )}
 
-      {/* Forensic Verdict Summary — only for image/video (category present) */}
+      {!result.category && (
+        <div className="glass rounded-3xl border border-white/10 p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Info className="w-4 h-4 text-blue-400" />
+            <h3 className="text-sm font-bold text-white/85 uppercase tracking-wider">Signal hierarchy</h3>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-emerald-400/90 font-black mb-2">Primary drivers</p>
+              <div className="space-y-2">
+                {primarySignals.map((metric) => (
+                  <div key={metric.key} className="flex items-center justify-between text-xs text-white/75">
+                    <span>{metric.label}</span>
+                    <span className="font-mono">{Math.round(metric.score * 100)}%</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="rounded-2xl bg-white/[0.03] border border-white/10 p-4">
+              <p className="text-[10px] uppercase tracking-[0.18em] text-white/40 font-black mb-2">Secondary context</p>
+              <div className="space-y-2">
+                {secondarySignals.length > 0 ? (
+                  secondarySignals.map((metric) => (
+                    <div key={metric.key} className="flex items-center justify-between text-xs text-white/65">
+                      <span>{metric.label}</span>
+                      <span className="font-mono">{Math.round(metric.score * 100)}%</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-white/45">No additional high-relevance signals were shown.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {result.category && result.signals && result.signals.length > 0 && (
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -255,22 +519,17 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
             Each layer is an independent forensic check. 2 or more FAILs = high confidence of manipulation or synthesis.
           </p>
         </div>
-
       )}
 
-      {/* Explanation Section */}
       <div className="glass rounded-3xl border border-white/10 p-6">
         <div className="flex items-center gap-2 mb-4">
           <Info className="w-4 h-4 text-emerald-400" />
           <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">
-            {result.category ? "Forensic Analysis Report" : "AI Reasoning"}
+            {result.category ? "Forensic Analysis Report" : "Analysis Narrative"}
           </h3>
         </div>
-        <p className="text-white/70 text-sm leading-relaxed mb-6 italic">
-          {`"${result.explanation}"`}
-        </p>
+        <p className="text-white/70 text-sm leading-relaxed mb-6 italic">{`"${result.explanation}"`}</p>
 
-        {/* Verification Signals — only shown for text results (no category) */}
         {!result.category && result.signals && result.signals.length > 0 && (
           <div className="space-y-4 pt-4 border-t border-white/5">
             <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em]">Verification Signals</h4>
@@ -283,8 +542,8 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
                       <ScoreBar label="" score={signal.confidence} showPercentage={false} color={signal.verified ? "bg-emerald-500" : "bg-rose-500"} />
                     </div>
                     <span className="text-[10px] font-mono text-white/40 w-8 text-right">{Math.round(signal.confidence * 100)}%</span>
-                    <span className={`text-[10px] font-bold w-16 text-right ${signal.verified ? 'text-emerald-400' : 'text-rose-400'}`}>
-                      {signal.verified ? 'VERIFIED' : 'FLAGGED'}
+                    <span className={`text-[10px] font-bold w-16 text-right ${signal.verified ? "text-emerald-400" : "text-rose-400"}`}>
+                      {signal.verified ? "VERIFIED" : "FLAGGED"}
                     </span>
                   </div>
                 </div>
@@ -293,16 +552,13 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           </div>
         )}
 
-        {/* Raw Metadata Section */}
         {result.metadata?.raw_metadata && Object.keys(result.metadata.raw_metadata).length > 0 && (
           <div className="mt-6 pt-6 border-t border-white/5">
             <h4 className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-4 text-center">Extraction: Source Metadata</h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {Object.entries(result.metadata.raw_metadata).map(([key, value]) => (
                 <div key={key} className="p-3 rounded-xl bg-black/30 border border-white/5 flex flex-col gap-1">
-                  <span className="text-[10px] uppercase font-bold text-white/20 tracking-wider">
-                    {key.replace(/_/g, ' ')}
-                  </span>
+                  <span className="text-[10px] uppercase font-bold text-white/20 tracking-wider">{key.replace(/_/g, " ")}</span>
                   <span className="text-xs font-mono text-white/80 truncate" title={String(value)}>
                     {String(value)}
                   </span>
@@ -313,7 +569,6 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
         )}
       </div>
 
-      {/* Audio Forensics Score */}
       {result.audio_score !== undefined && result.audio_score !== null && (
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -331,13 +586,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
               </p>
             </div>
           </div>
-          <p className="text-[10px] text-white/30 mt-3">
-            Spectral and temporal audio features analyzed for synthetic speech indicators (TTS, voice cloning).
-          </p>
+          <p className="text-[10px] text-white/30 mt-3">Spectral and temporal audio features analyzed for synthetic speech indicators (TTS, voice cloning).</p>
         </div>
       )}
 
-      {/* News Consistency Score */}
       {result.news_consistency_score !== undefined && result.news_consistency_score !== null && (
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -360,13 +612,10 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
               </p>
             </div>
           </div>
-          <p className="text-[10px] text-white/30 mt-3">
-            Semantic similarity cross-referenced against real-world news headlines to detect unsupported claims.
-          </p>
+          <p className="text-[10px] text-white/30 mt-3">Semantic similarity cross-referenced against real-world news headlines to detect unsupported claims.</p>
         </div>
       )}
 
-      {/* OCR Extracted Text */}
       {result.ocr_text && result.ocr_text.trim().length > 0 && (
         <div className="glass rounded-3xl border border-white/10 p-6">
           <div className="flex items-center gap-2 mb-4">
@@ -377,241 +626,13 @@ export function ResultDisplay({ result }: ResultDisplayProps) {
           <pre className="text-xs text-white/70 bg-black/40 rounded-xl p-4 border border-white/5 whitespace-pre-wrap break-words max-h-48 overflow-y-auto font-mono leading-relaxed">
             {result.ocr_text.trim()}
           </pre>
-          <p className="text-[10px] text-white/30 mt-3">
-            Text extracted from the image via Tesseract OCR and fed into the truthfulness pipeline.
-          </p>
+          <p className="text-[10px] text-white/30 mt-3">Text extracted from the image via OCR and fed into the truthfulness pipeline.</p>
         </div>
       )}
 
-      {/* Advanced Debug Section */}
+      {!result.category && <MetricModal metric={activeMetric} isOpen={!!activeMetric} onClose={() => setActiveMetric(null)} />}
+
       <DebugPanel data={result} />
     </motion.div>
-  );
-}
-
-function ScoreCard({
-  label,
-  score,
-  icon,
-  description,
-  invertColor,
-  onClick,
-  clickable,
-}: {
-  label: string;
-  score: number;
-  icon: React.ReactNode;
-  description: string;
-  invertColor?: boolean;
-  onClick?: () => void;
-  clickable?: boolean;
-}) {
-  // Hide cards where the score is below 15% — low scores add visual noise without value.
-  // For inverted metrics (bias, AI, manipulation, etc.) we check the raw score since
-  // high raw = bad; the threshold still applies to the raw value to suppress near-zero
-  // signals that are uninformative either way.
-  if (score < 0.15) return null;
-
-  // For AI/Bias scores, high = bad (red). For Truth/ELA/credibility, high = good (green).
-  const getColor = () => {
-    const v = invertColor ? 1 - score : score;
-    if (v > 0.6) return "bg-emerald-500";
-    if (v > 0.35) return "bg-amber-500";
-    return "bg-rose-500";
-  };
-  const getTextColor = () => {
-    const v = invertColor ? 1 - score : score;
-    if (v > 0.6) return "text-emerald-400";
-    if (v > 0.35) return "text-amber-400";
-    return "text-rose-400";
-  };
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`glass w-full text-left rounded-2xl border border-white/10 p-5 group transition-all ${
-        clickable ? "hover:border-white/20 cursor-pointer" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between mb-4">
-        <div className="p-2 rounded-lg bg-white/5">
-          {icon}
-        </div>
-        <span className={`text-2xl font-black font-mono ${getTextColor()}`}>{Math.round(score * 100)}%</span>
-      </div>
-      <p className="text-xs font-bold text-white/80 mb-1">{label}</p>
-      <p className="text-[10px] text-white/30 leading-tight">{description}</p>
-      <div className="mt-4">
-        <ScoreBar label="" score={score} showPercentage={false} color={getColor()} />
-      </div>
-    </button>
-  );
-}
-
-function ExpandedMetricPanel({
-  metric,
-  result,
-}: {
-  metric: "truth" | "verifiability" | "ai" | "bias" | "manipulation" | "opinion" | "sarcasm" | null;
-  result: AnalysisResult;
-}) {
-  if (!metric) return null;
-  const expanded = result.expanded_analysis;
-  const debugRule = result.debug?.final_rule_triggered || result.triggered_rule || "N/A";
-  const debugRaw = result.debug?.raw_intermediate_scores || {};
-  const verdictReason = result.debug?.why_verdict_chosen || "No detailed verdict reason available.";
-
-  if (metric === "truth") {
-    const truth = expanded?.truth_score;
-    const sources = truth?.sources || [];
-    return (
-      <div className="glass rounded-2xl border border-emerald-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-emerald-400 uppercase tracking-wider">Truth Score Details</h4>
-        <p className="text-xs text-white/70">{truth?.explanation || "No detailed truth explanation provided."}</p>
-        <p className="text-xs text-white/60">
-          <span className="font-bold text-white/80">Evidence:</span> {truth?.evidence || "Model and verification signals"}
-        </p>
-        {sources.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Sources</p>
-            <div className="grid gap-2">
-              {sources.map((source) => (
-                <a
-                  key={source}
-                  href={source.startsWith("http") ? source : undefined}
-                  target={source.startsWith("http") ? "_blank" : undefined}
-                  rel={source.startsWith("http") ? "noopener noreferrer" : undefined}
-                  className="text-xs p-2 rounded-lg bg-white/5 border border-white/10 text-white/80 break-all"
-                >
-                  {source}
-                </a>
-              ))}
-            </div>
-          </div>
-        )}
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  if (metric === "verifiability") {
-    const verifiability = expanded?.verifiability;
-    return (
-      <div className="glass rounded-2xl border border-cyan-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-cyan-400 uppercase tracking-wider">Verifiability Details</h4>
-        <p className="text-xs text-white/70">{verifiability?.explanation || "No detailed verifiability explanation provided."}</p>
-        <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-          {(verifiability?.indicators || []).map((indicator) => (
-            <li key={indicator}>{indicator}</li>
-          ))}
-        </ul>
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  if (metric === "ai") {
-    const ai = expanded?.ai_likelihood;
-    return (
-      <div className="glass rounded-2xl border border-rose-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-rose-400 uppercase tracking-wider">AI Likelihood Details</h4>
-        <p className="text-xs text-white/70">{ai?.explanation || "No detailed AI-likelihood explanation provided."}</p>
-        <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-          {(ai?.indicators || []).map((indicator) => (
-            <li key={indicator}>{indicator}</li>
-          ))}
-        </ul>
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  if (metric === "bias") {
-    const bias = expanded?.bias_score;
-    return (
-      <div className="glass rounded-2xl border border-amber-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-amber-400 uppercase tracking-wider">Bias Details</h4>
-        <p className="text-xs text-white/70">{bias?.explanation || "No detailed bias explanation provided."}</p>
-        <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-          {(bias?.indicators || []).map((indicator) => (
-            <li key={indicator}>{indicator}</li>
-          ))}
-        </ul>
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  if (metric === "manipulation") {
-    const manipulation = expanded?.manipulation_score;
-    return (
-      <div className="glass rounded-2xl border border-rose-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-rose-400 uppercase tracking-wider">Manipulation Details</h4>
-        <p className="text-xs text-white/70">{manipulation?.explanation || "No detailed manipulation explanation provided."}</p>
-        <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-          {(manipulation?.indicators || []).map((indicator) => (
-            <li key={indicator}>{indicator}</li>
-          ))}
-        </ul>
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  if (metric === "opinion") {
-    const opinion = expanded?.opinion_score;
-    return (
-      <div className="glass rounded-2xl border border-sky-500/20 p-5 space-y-4">
-        <h4 className="text-sm font-black text-sky-400 uppercase tracking-wider">Opinion Details</h4>
-        <p className="text-xs text-white/70">{opinion?.explanation || "No detailed opinion explanation provided."}</p>
-        <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-          {(opinion?.indicators || []).map((indicator) => (
-            <li key={indicator}>{indicator}</li>
-          ))}
-        </ul>
-        <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-      </div>
-    );
-  }
-
-  const sarcasmDetectedDisplay = (debugRaw.sarcasm_detected ?? result.dimensions?.sarcasm ?? false) ? "true" : "false";
-  return (
-    <div className="glass rounded-2xl border border-purple-500/20 p-5 space-y-4">
-      <h4 className="text-sm font-black text-purple-400 uppercase tracking-wider">Sarcasm Details</h4>
-      <p className="text-xs text-white/70">
-        Detects satirical/sarcastic cues that should be routed away from factual truth verdicts.
-      </p>
-      <ul className="space-y-1 text-xs text-white/65 list-disc list-inside">
-        <li>{`sarcasm_detected=${sarcasmDetectedDisplay}`}</li>
-        {"sarcasm_score" in debugRaw && <li>{`sarcasm_score=${String(debugRaw.sarcasm_score)}`}</li>}
-      </ul>
-      <MetricExplainabilityFooter rule={debugRule} reason={verdictReason} debugRaw={debugRaw} />
-    </div>
-  );
-}
-
-function MetricExplainabilityFooter({
-  rule,
-  reason,
-  debugRaw,
-}: {
-  rule: string;
-  reason: string;
-  debugRaw: Record<string, unknown>;
-}) {
-  const rawSignals = Object.entries(debugRaw).slice(0, MAX_DISPLAYED_RAW_SIGNALS);
-  return (
-    <div className="pt-3 border-t border-white/10 space-y-2">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Rule contributing to final verdict</p>
-      <p className="text-xs text-white/70">{rule}</p>
-      <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Why this metric matters</p>
-      <p className="text-xs text-white/70">{reason}</p>
-      <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Raw signals used</p>
-      <div className="grid gap-1">
-        {rawSignals.map(([key, value]) => (
-          <p key={key} className="text-[11px] font-mono text-white/60 break-all">{`${key}=${String(value)}`}</p>
-        ))}
-      </div>
-    </div>
   );
 }

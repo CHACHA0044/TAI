@@ -708,7 +708,8 @@ Return valid JSON ONLY (no markdown blocks):
 
         # Intermediate scores reused across routing + debug
         sarcasm_score_val = float(sarcasm_signal.get("score", 0.0))
-        opinion_score_val = 1.0 if bool(verifiability.get("opinion_detected", False)) else 0.0
+        # Continuous opinion score from claim-type classifier (not binary flag)
+        opinion_score_val = self._sanitize(float(claim_type_signal.get("scores", {}).get("OPINION", 0.0)))
 
         # 5.5 Enriched analysis (staged verdict routing)
         routing = stage_route_primary_verdict(
@@ -776,7 +777,11 @@ Return valid JSON ONLY (no markdown blocks):
             "retrieval_contradiction_score": round(trust_summary["retrieval_contradiction_score"], 4),
         }
 
-        verifiability_score = 0.95 if factual_claim and bool(verifiability.get("claim_verifiable", False)) else 0.3
+        verifiability_score = self._compute_verifiability_score(
+            claim_type=claim_type,
+            verifiability=verifiability,
+            trust_summary=trust_summary,
+        )
         dimensions = {
             "truth_score": int(round(final_truth_score * 100)),
             "verifiability": int(round(verifiability_score * 100)),
@@ -858,7 +863,12 @@ Return valid JSON ONLY (no markdown blocks):
                 bias_score, 
                 raw_features, 
                 getattr(self, "_expert_reasoning", None),
-                getattr(self, "_truth_reasoning", None)
+                getattr(self, "_truth_reasoning", None),
+                primary_verdict=primary_verdict,
+                claim_type=claim_type,
+                manipulation_score=manipulation_score,
+                sarcasm_detected=sarcasm_detected,
+                opinion_detected=bool(verifiability.get("opinion_detected", False)),
             ),
             "features": {
                 "perplexity": round(raw_features.get("perplexity", 0), 1),
@@ -874,51 +884,45 @@ Return valid JSON ONLY (no markdown blocks):
             "dimensions": dimensions,
             "expanded_analysis": {
                 "truth_score": {
-                    "explanation": "Cross-referenced against model inference and external verification signals.",
-                    "evidence": self._truth_reasoning or "Weighted blend of model truth score and external credibility.",
+                    "explanation": self._explain_truth_score(
+                        final_truth_score, claim_type, trust_summary, routing, verifiability
+                    ),
+                    "evidence": self._truth_reasoning or (
+                        "Weighted blend of model truth score and external credibility signals."
+                        if not truth_sources
+                        else f"Cross-source agreement detected across {len(truth_sources)} signal(s)."
+                    ),
                     "sources": truth_sources,
                 },
                 "ai_likelihood": {
-                    "explanation": "Derived from perplexity, burstiness, sentence-length uniformity, lexical repetition, and stylometric consistency.",
+                    "explanation": self._explain_ai_likelihood(ai_generated_score, raw_features, style_metrics),
                     "indicators": [
-                        f"perplexity={round(raw_features.get('perplexity', 0), 2)}",
-                        f"burstiness={style_metrics.get('burstiness', 0)}",
-                        f"sentence_uniformity={style_metrics.get('sentence_length_uniformity', 0)}",
-                        f"lexical_repetition={style_metrics.get('lexical_repetition', 0)}",
-                        f"stylometric_consistency={style_metrics.get('stylometric_consistency', 0)}",
+                        f"perplexity: {round(raw_features.get('perplexity', 0), 1)} (lower = more fluent / AI-like)",
+                        f"burstiness: {style_metrics.get('burstiness', 0)} (low = uniform AI rhythm)",
+                        f"sentence uniformity: {style_metrics.get('sentence_length_uniformity', 0)} (high = AI)",
+                        f"lexical repetition: {style_metrics.get('lexical_repetition', 0)} (high = AI)",
+                        f"stylometric consistency: {style_metrics.get('stylometric_consistency', 0)}",
                     ],
                 },
                 "bias_score": {
-                    "explanation": "Estimated from framing skew and language style cues.",
-                    "indicators": [
-                        f"bias_model={round(bias_score, 4)}",
-                        f"manipulation_score={round(manipulation_score, 4)}",
-                        *[f"bias_signal={value}" for value in bias_signal.get("indicators", [])],
-                    ],
+                    "explanation": self._explain_bias(bias_score, bias_signal),
+                    "indicators": self._format_bias_indicators(bias_signal),
                 },
                 "manipulation_score": {
-                    "explanation": "Flags emotional pressure, coercive urgency, fear framing, and sales pressure language.",
-                    "indicators": [
-                        *[f"manipulation_signal={value}" for value in manipulation_signal.get("indicators", [])],
-                    ],
+                    "explanation": self._explain_manipulation(manipulation_score, manipulation_signal),
+                    "indicators": self._format_manipulation_indicators(manipulation_signal),
                 },
                 "opinion_score": {
-                    "explanation": "Detects preference statements, value judgments, and rhetorical subjective framing.",
+                    "explanation": self._explain_opinion(opinion_score_val, claim_type, claim_type_signal, verifiability),
                     "indicators": [
-                        f"claim_type={claim_type}",
-                        *[f"claim_signal={value}" for value in claim_type_signal.get("signals", [])],
-                        f"verifiability_reason={verifiability.get('reason', 'unknown')}",
+                        f"claim classifier type: {claim_type}",
+                        *[f"signal: {s}" for s in claim_type_signal.get("signals", [])[:4]],
+                        f"verifiability reason: {verifiability.get('reason', 'unknown')}",
                     ],
                 },
                 "verifiability": {
-                    "explanation": "Gates factual verdicts by checking if the claim is sourceable and testable now.",
-                    "indicators": [
-                        f"claim_verifiable={bool(verifiability.get('claim_verifiable', True))}",
-                        f"verifiability_reason={verifiability.get('reason', 'unknown')}",
-                        f"trust_agent_confidence={trust_summary['trust_agent_confidence']}",
-                        f"retrieval_support_score={round(trust_summary['retrieval_support_score'], 4)}",
-                        f"retrieval_contradiction_score={round(trust_summary['retrieval_contradiction_score'], 4)}",
-                    ],
+                    "explanation": self._explain_verifiability(verifiability_score, verifiability, claim_type, trust_summary),
+                    "indicators": self._format_verifiability_indicators(verifiability, trust_summary),
                 },
             },
             "signals": signals,
@@ -959,36 +963,371 @@ Return valid JSON ONLY (no markdown blocks):
             "debug": debug,
         }
 
-    def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None):
-        parts = []
-        if truth_reasoning:
-            parts.append(truth_reasoning)
-        else:
-            if truth > 0.85:
-                parts.append("The content demonstrates exceptionally high factual alignment with verified source networks.")
-            elif truth > 0.7:
-                parts.append("The content aligns well with verified factual datasets.")
-            elif truth < 0.2:
-                parts.append("CRITICAL: Significant factual contradictions detected against multiple independent verifiers.")
-            elif truth < 0.35:
-                parts.append("Factual inconsistencies detected against cross-referenced news signals.")
-            else:
-                parts.append("Factual status is ambiguous or lacks sufficient external supporting evidence.")
+    def _compute_verifiability_score(
+        self,
+        *,
+        claim_type: str,
+        verifiability: dict,
+        trust_summary: dict,
+    ) -> float:
+        """Continuous verifiability score derived from claim type, signals, and retrieval."""
+        claim_verifiable = bool(verifiability.get("claim_verifiable", True))
+        reason = verifiability.get("reason", "")
+        opinion_detected = bool(verifiability.get("opinion_detected", False))
 
-        if expert_reasoning:
-            parts.append(expert_reasoning)
+        if not claim_verifiable:
+            if opinion_detected:
+                return 0.12
+            if reason == "speculative_or_unconfirmed_claim":
+                return 0.22
+            if reason == "marketing_or_promotional_claim":
+                return 0.18
+            if reason == "recent_or_local_hard_to_source_claim":
+                return 0.30
+            return 0.25
+
+        support = trust_summary.get("retrieval_support_score", 0.0)
+        if claim_type == "FACTUAL_CLAIM":
+            # 0.65 base + up to 0.30 boost from retrieval support
+            base = 0.65 + (0.30 * min(1.0, support))
+        elif claim_type == "MIXED":
+            base = 0.55 + (0.15 * min(1.0, support))
+        elif claim_type == "SPECULATIVE":
+            base = 0.25
         else:
+            base = 0.45 + (0.10 * min(1.0, support))
+
+        return self._sanitize(base)
+
+    @staticmethod
+    def _explain_truth_score(
+        score: float,
+        claim_type: str,
+        trust_summary: dict,
+        routing: dict,
+        verifiability: dict,
+    ) -> str:
+        verdict = routing.get("primary_verdict", "MIXED_ANALYSIS")
+        support = round(trust_summary.get("retrieval_support_score", 0.0), 2)
+        contradiction = round(trust_summary.get("retrieval_contradiction_score", 0.0), 2)
+        confidence = trust_summary.get("trust_agent_confidence", "inconclusive")
+        pct = int(round(score * 100))
+
+        if verdict == "VERIFIED_FACT":
+            return (
+                f"The model assigns a truth score of {pct}% — indicating strong factual grounding. "
+                f"External retrieval returned {confidence} signal (support={support}, contradiction={contradiction}). "
+                "Claims of this type are well-supported in cross-referenced knowledge bases."
+            )
+        if verdict == "FALSE_FACT":
+            return (
+                f"The truth score of {pct}% is very low, reflecting strong contradictory evidence. "
+                f"External retrieval returned contradiction signals (support={support}, contradiction={contradiction}). "
+                "The claim appears to conflict with established verified knowledge."
+            )
+        if verdict == "OPINION":
+            return (
+                f"Because this text is classified as an opinion, the truth score ({pct}%) reflects "
+                "the model's factual alignment estimate but does not imply the claim is objectively false. "
+                "Opinions are not fact-checked — they express personal perspectives."
+            )
+        if verdict in {"BIASED_CONTENT", "MANIPULATIVE_CONTENT"}:
+            return (
+                f"The truth score is {pct}%. While some factual content may be present, "
+                "the primary signal is skewed framing or pressure language. "
+                "Facts presented in biased or manipulative content may be selectively used or misleading."
+            )
+        if verdict == "SATIRE_OR_SARCASM":
+            return (
+                f"Truth score: {pct}%. The text appears to be satirical or sarcastic — "
+                "standard factual truth scoring does not directly apply. "
+                "The model detected ironic or rhetorical framing inconsistent with literal fact claims."
+            )
+        if verdict == "UNVERIFIED_CLAIM":
+            return (
+                f"Truth score: {pct}% — the claim could not be confirmed or denied. "
+                f"Retrieval confidence was {confidence} (support={support}, contradiction={contradiction}). "
+                "Insufficient evidence exists to assign a definitive factual verdict."
+            )
+        return (
+            f"Truth score: {pct}%. The claim type is '{claim_type.lower().replace('_', ' ')}' and retrieval "
+            f"confidence is {confidence} (support={support}). "
+            "Multiple signals are present without a single dominant factual result."
+        )
+
+    @staticmethod
+    def _explain_ai_likelihood(score: float, raw_features: dict, style_metrics: dict) -> str:
+        pct = int(round(score * 100))
+        ppl = round(raw_features.get("perplexity", 0), 1)
+        uniformity = round(style_metrics.get("sentence_length_uniformity", 0.5), 2)
+        burstiness = round(style_metrics.get("burstiness", 0.3), 2)
+
+        if score >= 0.80:
+            return (
+                f"AI likelihood is very high at {pct}%. The text shows multiple machine-writing hallmarks: "
+                f"low perplexity ({ppl}), uniform sentence rhythm (uniformity={uniformity}), "
+                "and limited stylistic variance. This pattern is common in LLM-generated prose."
+            )
+        if score >= 0.55:
+            return (
+                f"Moderate-to-high AI likelihood ({pct}%). Some stylometric signals suggest AI writing patterns: "
+                f"perplexity={ppl}, sentence uniformity={uniformity}, burstiness={burstiness}. "
+                "The text may be AI-assisted or edited, though it could also reflect a formal human writing style."
+            )
+        if score >= 0.35:
+            return (
+                f"Moderate AI likelihood ({pct}%). Stylometric analysis shows mixed signals. "
+                f"Perplexity is {ppl} and burstiness is {burstiness}. "
+                "The text shows some AI-like patterns but also enough variation to suggest human authorship."
+            )
+        return (
+            f"Low AI likelihood ({pct}%). The text's stylometric profile — perplexity={ppl}, "
+            f"burstiness={burstiness} — is consistent with natural human writing. "
+            "No strong machine-generation markers were identified."
+        )
+
+    @staticmethod
+    def _explain_bias(score: float, bias_signal: dict) -> str:
+        pct = int(round(score * 100))
+        indicators = bias_signal.get("indicators", [])
+        rule_hits = bias_signal.get("bias_rule_hits", [])
+        hit_count = len(rule_hits)
+
+        if score >= 0.70:
+            return (
+                f"Bias score is very high at {pct}%. The text contains strong loaded language, "
+                f"framing indicators, or demonizing rhetoric ({hit_count} rule signal(s) detected). "
+                "This level of slant is likely to shape reader interpretation in a partisan or inflammatory direction."
+            )
+        if score >= 0.45:
+            return (
+                f"Bias score: {pct}%. Notable framing cues were found: "
+                f"{', '.join(indicators[:3]) if indicators else 'slant patterns detected'}. "
+                "The content leans toward ideological or group-based framing that may influence objectivity."
+            )
+        if score >= 0.25:
+            return (
+                f"Mild bias indicators present ({pct}%). "
+                f"The text uses some loaded or opinionated language but falls below the strong-bias threshold. "
+                "It may still lean in one direction but does not appear aggressively partisan."
+            )
+        return (
+            f"Bias level is low ({pct}%). The text's language appears largely neutral "
+            "without significant ideological framing, demonizing rhetoric, or group-targeting language."
+        )
+
+    @staticmethod
+    def _format_bias_indicators(bias_signal: dict) -> list:
+        hits = bias_signal.get("bias_rule_hits", [])
+        raw = bias_signal.get("indicators", [])
+        if hits:
+            return [h.replace(":", " → ") for h in hits[:8]]
+        return [f"signal: {v}" for v in raw[:8]] if raw else ["No strong bias indicators detected"]
+
+    @staticmethod
+    def _explain_manipulation(score: float, manipulation_signal: dict) -> str:
+        pct = int(round(score * 100))
+        indicators = manipulation_signal.get("indicators", [])
+        rule_hits = manipulation_signal.get("manipulation_rule_hits", [])
+        has_action_pressure = any(
+            h.startswith(("urgency_coercion:", "sales_pressure:", "fomo_social_proof:", "suppressed_info:"))
+            for h in rule_hits
+        )
+
+        if score >= 0.65:
+            return (
+                f"High manipulation score ({pct}%). The text uses strong coercive or pressure tactics: "
+                f"{', '.join(indicators[:3]) if indicators else 'urgency, fear, or FOMO signals'}. "
+                "This content is designed to compel a specific action through psychological pressure."
+            )
+        if score >= 0.40:
+            return (
+                f"Moderate manipulation score ({pct}%). "
+                + (
+                    "Action-pressure cues (urgency, FOMO, or sales pressure) were detected alongside emotional framing. "
+                    if has_action_pressure
+                    else "Emotional framing was detected but without strong action-pressure cues. "
+                )
+                + "The text may be persuasive in nature but does not cross into high coercion."
+            )
+        return (
+            f"Low manipulation score ({pct}%). "
+            "The text does not exhibit significant coercive urgency, fear appeals, or sales pressure. "
+            "Emotional language, if present, is mild and below the manipulation decision threshold."
+        )
+
+    @staticmethod
+    def _format_manipulation_indicators(manipulation_signal: dict) -> list:
+        hits = manipulation_signal.get("manipulation_rule_hits", [])
+        raw = manipulation_signal.get("indicators", [])
+        if hits:
+            return [h.replace(":", " → ") for h in hits[:8]]
+        return [f"signal: {v}" for v in raw[:8]] if raw else ["No manipulation cues detected"]
+
+    @staticmethod
+    def _explain_opinion(score: float, claim_type: str, claim_type_signal: dict, verifiability: dict) -> str:
+        pct = int(round(score * 100))
+        opinion_detected = bool(verifiability.get("opinion_detected", False))
+        reason = verifiability.get("reason", "")
+        signals = claim_type_signal.get("signals", [])
+
+        if claim_type == "OPINION" or opinion_detected:
+            return (
+                f"Opinion score: {pct}%. The text is classified as an opinion or subjective statement. "
+                f"Detected signals include: {', '.join(signals[:3]) if signals else 'preference or value language'}. "
+                "Opinions express personal perspectives and are not subject to factual truth-scoring."
+            )
+        if score >= 0.50:
+            return (
+                f"Elevated opinion score ({pct}%). While not classified purely as opinion, "
+                "the text contains notable evaluative language, comparative judgments, or value claims. "
+                "This may mix factual assertions with personal perspectives."
+            )
+        if score >= 0.25:
+            return (
+                f"Mild opinion signals detected ({pct}%). The text is primarily factual or neutral "
+                "but contains some subjective phrasing or preference language. "
+                "These elements are unlikely to dominate the overall factual interpretation."
+            )
+        return (
+            f"Opinion level is low ({pct}%). The text reads as predominantly objective or factual. "
+            "No strong subjective opinion framing, preference statements, or value judgments were identified."
+        )
+
+    @staticmethod
+    def _explain_verifiability(score: float, verifiability: dict, claim_type: str, trust_summary: dict) -> str:
+        pct = int(round(score * 100))
+        claim_verifiable = bool(verifiability.get("claim_verifiable", True))
+        reason = verifiability.get("reason", "")
+        opinion_detected = bool(verifiability.get("opinion_detected", False))
+        support = round(trust_summary.get("retrieval_support_score", 0.0), 2)
+        confidence = trust_summary.get("trust_agent_confidence", "inconclusive")
+
+        if opinion_detected:
+            return (
+                f"Verifiability: {pct}%. This text is classified as an opinion or subjective statement, "
+                "which means it cannot be objectively verified against external facts. "
+                "Opinions are not testable — they express value judgments or personal preferences."
+            )
+        if not claim_verifiable:
+            reason_map = {
+                "speculative_or_unconfirmed_claim": "The claim contains speculative or hedged language (e.g., 'may', 'might', 'reportedly') making it impossible to confirm definitively.",
+                "marketing_or_promotional_claim": "The claim uses marketing language ('revolutionary', 'guaranteed') that lacks falsifiable content.",
+                "recent_or_local_hard_to_source_claim": "The claim references local or very recent information that is difficult to cross-reference against established sources.",
+            }
+            reason_text = reason_map.get(reason, "The claim does not contain enough verifiable anchors to fact-check reliably.")
+            return f"Verifiability: {pct}%. {reason_text}"
+
+        if claim_type == "FACTUAL_CLAIM":
+            return (
+                f"Verifiability: {pct}%. This is a factual claim with testable structure. "
+                f"External retrieval returned {confidence} confidence (support score={support}). "
+                "The claim can in principle be cross-referenced against verified knowledge bases."
+            )
+        return (
+            f"Verifiability: {pct}%. The text has some factual anchors but its overall structure is '{claim_type.lower().replace('_', ' ')}'. "
+            f"Retrieval confidence is {confidence} (support={support}). "
+            "Verification is possible but may be partial or inconclusive."
+        )
+
+    @staticmethod
+    def _format_verifiability_indicators(verifiability: dict, trust_summary: dict) -> list:
+        indicators = []
+        verifiable = bool(verifiability.get("claim_verifiable", True))
+        reason = verifiability.get("reason", "")
+        indicators.append(f"claim verifiable: {'yes' if verifiable else 'no'}")
+        if reason:
+            indicators.append(f"reason: {reason.replace('_', ' ')}")
+        indicators.append(f"retrieval confidence: {trust_summary.get('trust_agent_confidence', 'inconclusive')}")
+        indicators.append(f"support score: {round(trust_summary.get('retrieval_support_score', 0.0), 3)}")
+        indicators.append(f"contradiction score: {round(trust_summary.get('retrieval_contradiction_score', 0.0), 3)}")
+        return indicators
+
+    def _generate_explanation(self, truth, ai, bias, features, expert_reasoning=None, truth_reasoning=None,
+                              primary_verdict=None, claim_type=None, manipulation_score=0.0,
+                              sarcasm_detected=False, opinion_detected=False):
+        """Context-aware forensic narrative aligned with the primary verdict."""
+        parts = []
+        verdict = primary_verdict or "MIXED_ANALYSIS"
+
+        # --- Lead sentence: verdict-driven opener ---
+        if verdict == "VERIFIED_FACT":
+            parts.append(
+                "This claim appears to be factually grounded. "
+                "Cross-referenced signals and model inference both support the core assertion."
+            )
+        elif verdict == "FALSE_FACT":
+            parts.append(
+                "This claim appears to be factually incorrect. "
+                "Strong contradictory signals were detected across multiple verification sources."
+            )
+        elif verdict == "OPINION":
+            parts.append(
+                "This text expresses a subjective opinion or personal value judgment rather than a verifiable fact. "
+                "Factual truth-scoring does not apply to opinion statements."
+            )
+        elif verdict == "SATIRE_OR_SARCASM":
+            parts.append(
+                "This text appears to be satirical or sarcastic in nature. "
+                "Rhetorical and ironic framing signals were detected, indicating the content is not meant literally."
+            )
+        elif verdict == "BIASED_CONTENT":
+            parts.append(
+                "While factual elements may be present, the language exhibits notable ideological slant, "
+                "loaded framing, or group-targeting rhetoric that can shape interpretation beyond neutral reporting."
+            )
+        elif verdict == "MANIPULATIVE_CONTENT":
+            parts.append(
+                "The text employs emotional pressure tactics, urgency cues, or coercive language "
+                "designed to compel a specific response rather than to inform neutrally."
+            )
+        elif verdict == "CONSPIRACY_OR_EXTRAORDINARY_CLAIM":
+            parts.append(
+                "Markers associated with conspiracy theories or extraordinary claims were identified. "
+                "These claims often contradict established scientific or historical consensus without credible evidence."
+            )
+        elif verdict == "LIKELY_AI_GENERATED":
+            parts.append(
+                "Stylometric analysis indicates a high probability that this text was machine-generated. "
+                "Key signals include low perplexity, uniform sentence rhythm, and repetitive structural patterns."
+            )
+        elif verdict == "UNVERIFIED_CLAIM":
+            parts.append(
+                "This claim could not be confirmed or denied with available evidence. "
+                "Retrieval signals were inconclusive and the factual basis is insufficient for a definitive verdict."
+            )
+        else:
+            parts.append(
+                "The analysis returned mixed signals across multiple dimensions. "
+                "No single dominant signal reached the threshold for a definitive verdict category."
+            )
+
+        # --- Truth reasoning from LLM (if available) ---
+        if truth_reasoning and verdict not in {"OPINION", "SATIRE_OR_SARCASM"}:
+            parts.append(truth_reasoning)
+
+        # --- AI authorship note ---
+        if expert_reasoning and ai > 0.50:
+            parts.append(expert_reasoning)
+        elif not expert_reasoning and verdict not in {"OPINION", "SATIRE_OR_SARCASM", "BIASED_CONTENT", "MANIPULATIVE_CONTENT"}:
             ppl = features.get("perplexity", 0)
             div = features.get("lexical_diversity", 0.5)
-            
-            if ai > 0.85:
-                parts.append(f"Highly suspect stylometric markers (perplexity: {ppl:.1f}) strongly suggest machine-generation.")
-            elif ai > 0.7:
-                parts.append(f"Syntactic patterns indicate a high probability of AI assisted authorship.")
-            elif ai < 0.3 and div > 0.4:
+            if ai > 0.80:
+                parts.append(
+                    f"Highly uniform stylometric markers (perplexity: {ppl:.1f}) strongly suggest machine authorship."
+                )
+            elif ai > 0.55 and verdict == "LIKELY_AI_GENERATED":
+                parts.append(
+                    f"Syntactic uniformity (perplexity: {ppl:.1f}) and low lexical diversity ({div:.2f}) "
+                    "are consistent with LLM-generated prose."
+                )
+            elif ai < 0.30 and div > 0.40:
                 parts.append("Natural lexical diversity and sentence variance align with authentic human authorship.")
 
-        if bias > 0.7:
-            parts.append("Language patterns suggest a strong slant or potential manipulative framing designed to provoke response.")
+        # --- Bias note for non-bias verdicts ---
+        if bias > 0.60 and verdict not in {"BIASED_CONTENT", "MANIPULATIVE_CONTENT", "CONSPIRACY_OR_EXTRAORDINARY_CLAIM"}:
+            parts.append(
+                "Additionally, loaded or partisan framing was detected — consider this when evaluating the neutrality of the source."
+            )
 
         return " ".join(parts)
